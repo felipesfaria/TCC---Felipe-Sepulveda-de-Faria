@@ -1,0 +1,22 @@
+Uma Maquina de Vetores de Suporte (MVS) é um método de aprendizado de máquina supervisionado. %silvana: dizer que consiste de duas etapas: treinamento e classificação e que um conjunto de dados é usado para treinar e outro par classificar....
+
+Seu modelo é binário de forma que após o treinamento é possível classificar um exemplo entre duas classes.
+
+%silvana: A etapa de treinamento consiste em...
+Seu treinamento consiste em iterar diversas vezes sobre todo o conjunto de treinamento realizando operações complexas no processo. 
+%silvana: é possível dar uma ideia do que são essas "operações complexas"? o que caracteriza sua complexidade?
+
+%silvana: Na etapa de classificação as mesmas operações são executadas sobre os dados de entrada...
+Para classificação ela separa um subconjunto e realiza as mesmas operações sobre elas para chegar em uma estimativa. 
+
+%silvana: Esse processo é muito custoso computacionalmente... para garantir a precisão desejada na etapa de classificação...
+Esse processo é muito custoso já que as operações são complexas e um conjunto de dados precisa ser grande para render boa precisão na classificação. 
+Por isso é um método interessante para ser paralelizado em GPU. GPUs possuem uma capacidade de processamento paralelo muito acima das CPUs, mas o seu uso não é trivial e é preciso adaptar os algoritmos à sua arquitetura. 
+
+Nesse trabalho implementamos um programa capaz de rodar uma Maquina de Vetores de Suporte de forma sequencial e paralela. O algoritmo escolhido para implementar foi Kernel-Adatron, 
+
+%silvana: por ser um algoritmo simples de MVS com potencial de ganho com a paralelização em GPU...
+por ser um algoritmo que resolve os problemas da maquina de vetores de suporte pela força bruta, tem um alto potencial de ganho com paralelização em GPU. 
+
+%silvana: avaliamos o algoritmo em relação à precisão obtida na classificação e ao ganho de desempenho da versão paralela em relação à versão sequencial.
+Avaliamos o desempenho do programa tanto pelo lado da MVS quanto pela GPU, o objetivo é encontrar o maior ganho de velocidade da GPU e o maior ganho de precisão da MVS.

@@ -1,0 +1,18 @@
+
+int main(void){
+    int N = 2048; size_t size = N * sizeof(float);
+     // Aloca o vetor do host
+     float* hostA = (float*)malloc(size);
+     for(int i = 0; i< N; ++i) hostA[i] = i;
+     // Aloca o vetor do device
+     float* devA;
+     cudaMalloc(&devA, size);
+     // Copia os vetores de entrada do host para o device
+     cudaMemcpy(devA, hostA, size, cudaMemcpyHostToDevice);
+     // Chamada do kernel
+     Square<<<4, 512>>>(devA, size);
+     // Copia os valores da solucao para o host
+     cudaMemcpy(hosta, deva, size, cudaMemcpyDeviceToHost);
+     // libera a memoria do device
+     cudaFree(devA);
+ }

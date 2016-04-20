@@ -1,0 +1,21 @@
+\chapter{Avaliação} \label{chp:LABEL_CHP_5}
+
+A avaliação de um classificador paralelo é complicada. É necessário levar em consideração tanto a performance em precisão quanto em velocidade, e melhorar um sem piorar o outro. Maquinas de suporte de vetores possuem diversos parâmetros que alteram tanto a precisão quanto a velocidade do programa em versão paralela e sequencial. Todos os conjuntos de dados estão disponíveis tanto no site do UCI \cite{UCI} quanto no site do LIBSVM \cite{art:LIBSVM}.
+
+\section{Conjunto de Dados}\label{sec:LABEL_CHP_5_SEC_A}
+Antes de analisar os resultados, devemos analisar os conjuntos de dados estudados.
+\subsection{Iris} \label{sec:Iris}
+Originalmente esse conjunto de dados distinguia entre 3 tipos de iris, uma especie de flor, os atributos descrevem os tamanhos das pétalas e das sépalas. São 150 amostras no conjunto.
+\subsection{Adult} \label{sec:Adult}
+O objetivo desse conjunto de dados é analisar a faixa de renda de um adulto americano baseado em diversos fatores. A classificação prevê se o individuo tem renda de mais ou menos que 50 mil dólares por ano. Alguns dos atributos são idade, pais de origem, etnia, estado civil e escolaridade. Existem 9 versões desse conjunto de dados variando o numero de amostras entre 1,605 e 32,561.
+\subsection{Web} \label{sec:Web}
+Esse conjunto de dados determina se uma pagina pertence a uma categoria ou não baseado na presença de palavras chave. Existem 8 versões desse conjunto de dados variando o numero de amostras entre 2,477 e 49,749.
+
+\subsection{Tratamento dos dados}
+No conjunto \ref{sec:Iris}, foi necessário remover uma das classes para que o conjunto fosse compatível o classificador binário. As duas classes remanescentes são linearmente separáveis de forma que o conjunto serviu para facilitar os testes no inicio do desenvolvimento.
+
+Os conjuntos \ref{sec:Adult} e \ref{sec:Web} possuem atributos multi-variados, atributos que são definidos por uma classe, como por exemplo $PaisDeOrigem \in \left [ Brasil,Espanha,Noruega \right ]$. É preciso atribuir valores numéricos para esses atributos para que funcionem com a maquina de vetores de suporte. Para isso trocamos os atributos multi-variados por valores binários. Substitui-se o atributo $PaisDeOrigem$, por 3 atributos binários que podem ser verdadeiro ou falso, $Brasileiro \in \left [ 0,1 \right ]$, $Espanhol \in \left [ 0,1 \right ]$ e $Noruegues \in \left [ 0,1 \right ]$. Essas parametrizações já estavam feitas no site do LIBVSM.
+
+%\section{Performance Tempo}\label{sec:LABEL_CHP_5_SEC_B}
+
+%\section{Performance Precisão}\label{sec:LABEL_CHP_5_SEC_C}

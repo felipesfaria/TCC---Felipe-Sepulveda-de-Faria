@@ -1,0 +1,83 @@
+\chapter{Desenvolvimento}\label{chp:LABEL_CHP_4}
+
+A linguagem escolhida para o desenvolvimento foi o c++ pois possui boa performance e possui muitos exemplos de CUDA disponível no CUDA ToolKit 7.5 \cite{CUDA}. As ferramentas Visual Studio 2013, IDE desenvolvida pela Microsoft, e Rasharper c++, plugin desenvolvido pela JetBrains, foram usadas para facilitar o desenvolvimento. Juntas essas ferramentas oferecem muitas funcionalidades de navegar pelo código, refatoramento, debug e Testes Automatizados. Para o controle de versão foi usado o Git e todo o código fonte incluindo o latex desse relatório se encontram em \url{https://github.com/felipesfaria/FariaTcc}.
+
+\section{Comandos do Programa}
+O programa foi feito de forma que alguns parâmetros possam ser recebidos pela linha de comando. 
+Esses parâmetros são carregados no inicio do programa pela classe \texttt{Settings}.
+Se rodar o programa sem comandos todos os parâmetros tem definido um valor default e também é possível enviar o comando -h para ver na tela os comandos possíveis.
+
+\begin{table}
+    \small
+    \centering
+    \begin{tabular}{c|c|c|c}
+        Comando & Descrição & Tipo / Valores aceitos & Default \\ \hline
+        -c & Constante de margem flexível & double & 999.0 \\ \hline
+        -d & Conjunto de Dados &  i:Iris & i \\ 
+         &  &  a[1-9]:Adult &  \\ 
+         &  &  w[1-8]:Web &  \\ \hline
+        -f & Partições na validação cruzada & int & 10 \\ \hline
+        -g & $\gamma$ usado pelo kernel gaussiano & double & 0.5 \\ \hline
+        -h & Menu de ajuda & & \\ \hline
+        -l & Nível de log & a:Todos , r:Resultados  & r \\
+           & & e:Erros , n:Nenhum & \\ \hline
+        -mi & Máximo de Iterações & int & 128 \\ \hline
+        -p & Precisão da parada & double & 1e-010 \\ \hline
+        -sd & Gerador de numero aleatório & int & time(nullptr) \\ \hline
+        -st & Paço inicial & double & 1 \\ \hline
+        -svm & Tipo de MVS & p:Paralelo & s \\
+         &  & s:Sequencial &  \\ \hline
+        -t & Threads por Bloco & int & 128 \\
+    \end{tabular}
+    \caption{Comandos aceitos pelo programa}
+    \label{tab:commands}
+\end{table}
+
+\section{Estrutura de Dados}
+Desenvolvemos o programa para ler arquivos no mesmo formato que os conjuntos de dados apresentados no site do LIBSVM \cite{art:LIBSVM}. Esse formato consiste em apresentar primeiro a classe da amostra representada por um numero, seguida por seus atributos no formato \texttt{indice:valor}, como podemos ver no exemplo \ref{alg:datasample} temos um conjunto de dados com 4 amostras, duas de cada classe, cada uma com 4 atributos.
+
+\codec{Conjunto de dados no formato do LIBSVM}{alg:datasample}{codigos/datasample.txt}
+
+A leitura do arquivo com o conjunto de dados é feita pela classe \texttt{DataSet}. Os atributos das amostras são salvos em \texttt{vector<vector<double>> X} e as suas classes em \texttt{vector<double> Y}.
+
+Para se obter as métricas usadas na avaliação é usado um método conhecido como validação cruzada onde o conjunto de dados é dividido em $n$ partições. Para cada partição $i \in [1,n]$ é feita um treinamento com as outras partições $[1,n]-i$ em seguida é feita a classificação de todas as amostras na partição $i$ para conseguir um resultado de performance para esse conjunto de treinamento e validação. Isso é feito para todos os conjuntos de $n$ de forma que todas as amostras foram classificadas uma vez e participaram de $n-1$ treinamentos, dessa forma conseguimos $n$ avaliações disjuntas de precisão da MVS e uma boa analise de desempenho minimizando os impactos externos que poderiam afetar apenas uma execução.
+
+Para dividir o conjunto de dados em treinamento e avaliação utilizo as classes \texttt{TrainingSet} e \texttt{ValidationSet} que herdam de \texttt{BaseSet}. \texttt{BaseSet} possui um conjunto de dados armazenando as amostras em \texttt{double* x}, as classes em \texttt{double* y}, \texttt{int width} é a quantidade de argumentos e \texttt{int height} é o numero de amostras no conjunto. \texttt{void BaseSet::Init(int height, int width)} define \texttt{height} e \texttt{width} e aloca memória para \texttt{x} e \texttt{y}. As amostras em \texttt{x} são salvas em um único vetor continuo e podem ser endereçadas por \texttt{indiceReal = indiceDaAmostra*width}.
+Além dos atributos em \texttt{BaseSet}, \texttt{TrainingSet} possui os valores de $\alpha$ em \texttt{double* alpha} descobertos no treinamento para serem usados na classificação, e \texttt{ValidationSet} mantem a quantidade de classificações corretas para análise posterior.
+Esses objetos são inicializados a partir do método \texttt{void InitFoldSets(TrainingSet *ts, ValidationSet *vs, int fold)}, onde cada conjunto é definido pela função \texttt{void InitFoldSets(TrainingSet *ts, ValidationSet *vs, int fold)} apresentada em \ref{alg:InitFoldSet}.
+
+\codec{Como dividir o conjunto de dados para validação cruzada}{alg:InitFoldSet}{codigos/InitFoldSet.txt}
+
+\section{Kernel Gaussiano}
+Para implementar o algoritmo \ref{alg:KAA} é preciso levar algumas coisas em consideração. O primeiro seria como fazer o Kernel? Inicialmente desenvolvemos a aplicação de forma que implementasse todos os algoritmos listados na tabela \ref{tab:Kernels}, mas logo nas primeiras versões vimos que os resultados com o kernel Gaussiano estavam melhores que os outros, além disso todas as referências, citadas em \ref{chp:LABEL_CHP_1} usaram apenas o kernel gaussiano. Por isso implementamos somente o kernel gaussiano de forma a reduzir o escopo de análise.
+
+O kernel gaussiano é definido como $k(\bar{x},\bar{y})=e^{-\big(\frac{|\bar{x}-\bar{y}|^2}{2\sigma^2}\big)}$, para economizar cálculos fazemos algumas simplificações. Substituímos $\frac{1}{2\sigma^2}$ por $\gamma$ que é calculado quando o valor é definido na inicialização do programa. Como $|\bar{x}| = \sqrt{\sum x_i^2}$ podemos simplificar $|\bar{x}-\bar{y}|^2 = \bigg(\sqrt{\sum (x_i-y_i)^2}\bigg)^2=\sum (x_i-y_i)^2$. A função que programamos no final é equivalente à $e^{\big(-\gamma*\sum (x_i-y_i)^2\big)}$.
+Para garantir que a versão sequencial e paralela funcionam da mesma forma e para evitar a repetição de código definimos a função de kernel gaussiano com as diretivas \texttt{\_\_host\_\_} e \texttt{\_\_device\_\_}, como pode ser visto no código \ref{alg:gaussKernel}.
+
+\codec{Kernel Gaussiano}{alg:gaussKernel}{codigos/gaussKernel.txt}
+
+\section{Maquinas de Vetores de Suporte}
+Mais uma vez para evitar repetição de código e para utilizar melhor as propriedades do C++ definimos a classe \texttt{BaseSvm} com os métodos \texttt{virtual void Train(TrainingSet *ts)} e \texttt{virtual void Test(TrainingSet *ts, ValidationSet *vs)}, assim é possível definir no código toda a execução do programa só precisando especificar no gerador do MVS qual tipo vamos usar, depois disso desenvolvemos duas classes que herdam de \texttt{BaseSvm}, \texttt{ParallelSvm} e \texttt{SequentialSvm}.
+
+Programar o algoritmo Kernel-Adatron \ref{alg:KAA} é simples. Porem alguns pontos precisam ser revistos. A condição de parada e o valor de $\eta$. Existem conjuntos de dados difíceis de se calcular que pode fazer com que o programa rode por uma quantidade de tempo considerável. Para isso definimos um limite máximo de iterações que pode ser definido por \texttt{-mi}, seu valor default é \texttt{512}. Outra abstração abordada na implementação está em $\bar{\alpha}-\bar{\alpha_{old}}\approx \bar{0}$. Precisamos definir o quão próximo de zero é o suficiente para nosso programa. Com essa precisão $p$ nós definimos que $a\approx b$ se $|a-b|<p$. Esse parâmetro pode ser configurado por \texttt{-p} e o valor padrão é \texttt{1e-5}. Assim nossa condição de parada fica \texttt{abs(avgDif) > Precision \&\& count < MaxIterations}, onde \texttt{avgDif} é a media de $\bar{\alpha}-\bar{\alpha_{old}}$ e \texttt{count} é o numero de iterações.
+
+Embora na seção \ref{sec:kaa} tenhamos visto que o algoritmo sempre irá convergir dado um $\eta$ pequeno o suficiente, esse tamanho é difícil de se descobrir. Se for muito grande o algoritmo pode nunca convergir e sempre ultrapassar o ponto ótimo. Se for muito pequeno o algoritmo pode demorar muito para chegar no ponto ótimo. A solução encontrada para o problema foi adotar um $\eta$ flexível. Começando com um valor grande, sempre que percebemos que passamos do ponto ótimo reduzimos $\eta$ na metade. Assim não corremos o risco de arbitrariamente escolher um valor ruim. Permitimos que o valor inicial de $\eta$ seja definido por linha de comando com o comando \texttt{-s} e o default é \texttt{1} como pode ser visto na tabela \ref{tab:commands}.
+
+Agora precisamos considerar como sabemos que passamos do ponto para reduzir o valor de $\eta$. Para isso fazemos dois testes. Primeiro vemos se nos afastamos do ponto ótimo, checando se o valor de \texttt{avgDif} aumentou. Depois vemos se o sinal de \texttt{avgDif} mudou, se ele era crescente e virou decrescente ou se ele era decrescente e virou crescente significa que o gradiente mudou de direção. Isso é feito no função mostrada em  \ref{alg:updateStep}
+
+\codec{Atualização de $\eta$}{alg:updateStep}{codigos/updateStep.txt}
+
+Percebemos na pratica que alguns parametros convergem mais rapidos que outros. Por isso implementamos dois métodos diferentes de atualização de $\eta$. Um em que só possuimos um valor de $\eta$ aplicado em todos os valores de $\alpha_i$ e outro em que utilizamos um vetor $\bar{\eta}$ onde possuimos um valor de $\eta_i$ para cada $\alpha_i$. Chamamos isso de \texttt{StepMode} que pode ser \texttt{SingleStep} ("s") ou \texttt{MultiStep} ("m") na linha de comando com \texttt{-sm}.
+
+No algoritmo Kernel-Adatron visto os valores de alpha são usados assim que são descobertos. Essa versão é conhecida como Kernel-Adatron estocástico. Já que na nossa versão paralela nãos erá possivel implementar o método estocástico já que calcularemos todos os valores de $\alpha$ paralelamente implementamos as duas versões na forma sequencial. É possivel definir pelo comando \texttt{-ua} se o valor de $\alpha_i$ vai ser atualizado assim que descoberto definimos \texttt{-ua t}, o padrão que utilizamos ou \texttt{-ua f} faz com que os valores de alpha sejam atualizados simultaneamente ao final de cada iteração. No capitulo \ref{chp:LABEL_CHP_5} avaliamos qual forma funciona melhor.
+
+Podemos ver como ficou o loop principal da função de treinamento sequencial em \ref{alg:SequentialSvmTrain}.
+
+\codec{Treinamento Sequencial}{alg:SequentialSvmTrain}{codigos/SequentialSvmTrain.txt}
+
+A função de classificação pode ser implementada diretamente da equação matemática sem muita complicação. Utilizamos o $\bar{\alpha}$ encontrado no treinamento e $\bar{x}$ que está armazenado no \texttt{TrainingSet} para descobrir a classe do exemplo de validação.
+
+\codec{Classificação Sequencial}{alg:SequentialSvmClassify}{codigos/SequentialSvmClassify.txt}
+
+\section{Paralelização}
+

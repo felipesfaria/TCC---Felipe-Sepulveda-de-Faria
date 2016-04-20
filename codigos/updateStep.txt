@@ -1,0 +1,6 @@
+__host__ __device__  void updateStep(double& step, double& oldDif, double newDif)
+{
+	if (oldDif*newDif<0 || abs(oldDif) <= abs(newDif))
+		step /= 2;
+	oldDif = newDif;
+}

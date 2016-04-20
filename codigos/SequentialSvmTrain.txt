@@ -1,0 +1,29 @@
+double avgDif;
+double avgStep;
+do
+{
+  avgDif = 0;
+  for (int i = 0; i < height; ++i)
+  {
+    double sum = 0;
+    for (int j = 0; j < height; ++j)
+      sum += y[j] * alpha[j] * gaussKernel(x, j, x, i, width, g);
+    auto stepI = isMultiStep ? i : 0;
+    newAlpha[i] = calcAlpha(alpha[i], sum, y[i], steps[stepI], C);
+    if (isMultiStep)
+      updateStep(steps[i], oldDifs[i], newAlpha[i] - alpha[i]);
+    avgDif += newAlpha[i] - alpha[i];
+    if (isStochastic)
+      alpha[i] = newAlpha[i];
+  }
+  if (!isStochastic)
+    for (int i = 0; i < height; ++i)
+      alpha[i] = newAlpha[i];
+  avgDif /= height;
+  if (!isMultiStep)
+    updateStep(steps[0], oldDifs[0], avgDif);
+  avgStep = 0.0;
+  for (int i = 0; i < stepsSize; ++i)
+    avgStep += steps[i];
+  avgStep /= stepsSize;
+} while (abs(avgDif) > Precision && ++count < MaxIterations);

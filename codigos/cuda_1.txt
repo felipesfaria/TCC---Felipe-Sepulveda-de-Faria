@@ -1,0 +1,7 @@
+// definicao do kernel
+__global__ void Square(float* A, int size)
+{
+    int i = threadIdx.x + blockIdx.x * blockDim.x;
+    if(i<size)
+        A[i] = A[i] *A[i];
+}

@@ -1,0 +1,14 @@
+__host__ __device__ double gaussKernel(const double* a, int aI, const double* b, const int bI, const int width, const double g)
+{
+	int aIw = aI * width;
+	int bIw = bI * width;
+	double product=1;
+	double sum = 0;
+	for (int j = 0; j < width; ++j)
+	{
+		product = a[aIw + j] - b[bIw + j];
+		product *= product;
+		sum += product;
+	}
+	return exp(-g*sum);
+}
