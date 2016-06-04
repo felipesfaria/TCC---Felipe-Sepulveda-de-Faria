@@ -200,7 +200,13 @@
   \vfill
   \@ifundefined{@advisor}{}{
     \hspace*{\fill}\parbox[b]{.5\textwidth}{%
-                        {\titlepageadvisorinfo}
+                        {Prof. Silvana Rossetto, D.Sc.
+                        
+                        Prof. Aloísio Carlos de Pina, D.Sc.
+                        
+                        Orientadores
+                        %\titlepageadvisorinfo
+                        }
                     }
     \vfill
   }
@@ -247,8 +253,10 @@
     \clearpage
     \thispagestyle{empty}
     \bigskip
-    \centerline{\textbf{\large\@title}}
-    \bigskip
+    \centerline{\textbf{\large Implementação Paralela para GPU de}}
+    \centerline{\textbf{\large uma Máquina de Vetores Suporte}}
+    \centerline{\textbf{\large Usando o Algoritmo Kernel-Adatron}}
+    
     \centerline{\textbf{\@authora}}
     \@ifundefined{@authorb}{}{
       \centerline{\textbf{\@authorb}}
@@ -259,7 +267,7 @@
     \bigskip
 
     \noindent
-    Projeto Final de Curso submetido ao Departamento de Ci\^encia da Computa\c{c}\~ao do Instituto de Matem\'atica da Universidade Federal do Rio de Janeiro como parte dos requisitos necess\'arios para obten\c{c}\~ao do grau de Bacharel em Inform\'atica.
+    Projeto Final de Curso submetido ao Departamento de Ci\^encia da Computa\c{c}\~ao do Instituto de Matem\'atica da Universidade Federal do Rio de Janeiro como parte dos requisitos necess\'arios para obten\c{c}\~ao do grau de Bacharel em Ciência da Computação.
 
     \noindent
     Apresentado por:
@@ -287,7 +295,11 @@
     \bigskip
     \begin{flushright}
       \hfill\line(1,0){250}\\
-      \@advisor
+      Prof. Silvana Rossetto, D.Sc.
+      
+      \hfill\line(1,0){250}\\
+      Prof. Aloísio Carlos de Pina, D.Sc.
+                        
       
       \@ifundefined{@coadvisor}{}{
         \hfill\line(1,0){250}\\
@@ -341,9 +353,12 @@
     \normalsize
 
     \noindent
-    Orientador: \@advisorname\\
-    \@advisororigin\\
-
+    Orientadores: 
+    
+    Silvana Rossetto, D.Sc.
+    
+    Aloísio Carlos de Pina, D.Sc.
+      
     \renewcommand{\baselinestretch}{1.5}
     \normalsize
 
@@ -369,8 +384,11 @@
   \normalsize
 
   \noindent
-  Advisor: \@advisorname\\
-  \@advisororigin\\
+  Advisors:
+    
+    Silvana Rosseto, D.Sc.
+    
+    Aloísio Carlos de Pina, D.Sc.
 
   \renewcommand{\baselinestretch}{1.5}
   \normalsize
@@ -452,6 +470,15 @@
 
 %=====================================================================
 % Definição do conteúdo de listas de algoritmos
+%=====================================================================
+\newcommand{\makealgorithmspage}{
+  \addcontentsline{toc}{chapter}{\listalgorithmname} 
+  \listofalgorithms{}
+  \pagebreak
+}{}
+
+%=====================================================================
+% Definição do conteúdo de listas de codigos
 %=====================================================================
 \newcommand{\makelistingspage}{
   \addcontentsline{toc}{chapter}{\lstlistlistingname} 

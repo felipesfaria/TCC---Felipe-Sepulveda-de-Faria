@@ -1,74 +1,44 @@
 \chapter{Introdução}\label{chp:LABEL_CHP_1}
 
-%Felipe:Mudei o estilo de citação, para incluir o nome e data, ficou melhor assim?
-\emph{Support Vector Machine}, ou Máquina de Vetores de Suporte (MVS), é um método de aprendizado de máquina. 
+\emph{Support vector machine}, ou máquina de vetores suporte (MVS), é um método de aprendizado de máquina em que, a partir de um conjunto de dados definidos como exemplos, são definidos hiperplanos que separam as classes. Cada exemplo é composto por atributos e uma classe. Atributos são variáveis cujos valores podem ser usados para fazer a predição da classe. Um exemplo onde se desconhece a classe é chamado de caso teste. A máquina de vetores suporte representa os casos teste como pontos em um espaço $n$ dimensional, onde $n$ é o número de atributos do caso teste. A MVS cria um hiperplano que divide esse espaço de forma que seja possível identificar a qual classe o exemplo pertence.
+Esse hiperplano é construído a partir da fronteira entre o subespaço ocupado por cada classe. Os pontos que definem essas fronteiras são chamados de vetores suporte.
 
-%Seu modelo básico descreve um classificador binário, 
-%silvana: continuar descrevendo o que é o classificador binário...
-
-%podendo ser modificado para regressão, uma estimativa numérica, ou multi-classificação, %classificação entre mais de duas classes. 
-%silvana: essas são alternativas ao classificador binário?
-
-
-A máquina de vetores de suporte representa os dados como pontos em um espaço $n$ dimensional, onde $n$ é o numero de parâmetros do conjunto de teste. A MVS cria um hiperplano que divide esse espaço de forma que seja possível identificar à qual classe o exemplo pertence. Esse hiperplano é definido atribuindo pesos a pontos desse espaço que são gerados a partir do conjunto de treinamento. Esses pontos são chamados de vetores de suporte. Neste trabalho, implemento
-um algoritmo simples de MVS que encontra o hiperplano usando força bruta, levando em consideração todos os pontos do conjunto de treinamento e convergindo em direção ao hiperplano que melhor divide o espaço entre as duas classes. Esse algoritmo é muito custoso computacionalmente pois é preciso comparar todos os pares de exemplos do conjunto de treinamento a cada iteração. 
-%silvana: Além disso, como o conjunto de dados de entrada normalmente é bastante grande, esse é um tipo de problema que pode se beneficiar da computação paralela...
-Como temos um conjunto grande de dados e um algoritmo custoso e repetitivo temos um caso forte para a paralelização.
+Neste trabalho, implementamos um algoritmo de MVS que encontra esse hiperplano, avaliando todos os casos teste do conjunto de treinamento e convergindo em direção ao hiperplano que melhor divide o espaço entre os pontos de cada classe. Esse algoritmo é muito custoso computacionalmente, pois é preciso comparar todos os pares de exemplos do conjunto de treinamento a cada iteração.
+Desse modo, como temos um conjunto de dados grande e um algoritmo custoso e repetitivo, temos um caso forte para a paralelização.
 
 
 \par
 %silvana: Existem diferentes ambientes para programação paralela, entre eles as GPUs têm ganhado destaque nos último anos...
 %Para paralelização escolhi a GPU. 
-GPUs tradicionalmente são usados para computação gráfica e foram otimizados para processar imagens e espaços com um conjunto enorme de pontos. Essa capacidade de processar uma grande quantidade de dados em paralelo tem utilidade em muitos outros campos além dá computação gráfica. 
+Existem diferentes ambientes para programação paralela, entre os quais as GPUs (\emph{Graphics Processing Units}) têm ganhado destaque nos último anos. As GPUs tradicionalmente são usadas para computação gráfica e foram otimizadas para processar imagens e espaços com um conjunto enorme de pontos. Entretanto, essa capacidade de processar uma grande quantidade de dados em paralelo tem utilidade em muitos outros campos além dá computação gráfica, onde é necessário um alto nível de paralelismo de dados, como é o caso da MVS.
 %silvana: acrescentar dizendo que tipos de problemas se adequam para implementação em GPU (forte paralelismo de dados, como é o caso de MVS...) 
+%Felipe: melhor?
 
 \par
-A implementação de um MVS usando GPU não é novidade. Catanzaro, Sundaram e Keutzer em 2008 \cite{art:REF_ART_1} mostraram que uma MVS utilizando a arquitetura paralela da GPU poderia ser muito mais rápida. Eles compararam sua performance com o LIBSVM \cite{art:LIBSVM}, uma das bibliotecas mais populares e mais completas de MVS e o ganho deles foi de 9 a 35 vezes melhor no treinamento e de 81 a 138 vezes melhor na classificação. Catanzaro et al. usou o algoritmo SMO, \emph{Sequential Minimal Optimization}, que divide o problema de otimização em problemas menores.
+A implementação de um MVS usando GPU não é novidade. Catanzaro, Sundaram e Keutzer em 2008 \cite{art:REF_ART_1} mostraram que uma MVS utilizando a arquitetura paralela da GPU poderia ser muito mais rápida. Eles compararam seu desempenho com o LIBSVM \cite{art:LIBSVM}, uma das bibliotecas mais populares e mais completas de MVS, o ganho foi de 9 a 35 vezes melhor no treinamento e de 81 a 138 vezes melhor na classificação. Catanzaro et al. usou o algoritmo SMO, \emph{Sequential Minimal Optimization}, que divide o problema de otimização em problemas menores.
 \par
-Austin Carpenter em 2009 \cite{art:REF_ART_2} criticou a versão de Catanzaro por não implementar a regressão e obter precisão um pouco abaixo do LIBSVM em um dos conjuntos de dados por usar float invés de double. As GPUS possuem mais unidades logicas de float do que double, o que motivou a escolha de Catanzaro por velocidade sobre precisão. O programa de Carpenter implementa regressão e usa uma mistura de float e double, recuperando a precisão perdida sem perda de velocidade.
+Austin Carpenter em 2009 \cite{art:REF_ART_2} criticou a versão de Catanzaro por não implementar a regressão e obter precisão um pouco abaixo do LIBSVM em um dos conjuntos de dados por usar o tipo float ao invés do tipo double. As GPUs possuem mais unidades lógicas de float do que double, o que motivou a escolha de Catanzaro por velocidade sobre precisão. O programa de Carpenter implementa regressão e usa uma mistura de float e double, recuperando a precisão perdida sem perda de velocidade.
 \par
-Athanasopoulos, Dimou, Mezaris, Kompatsiaris (2011)\cite{art:REF_ART_3} expandiram a LIBSVM de forma que todas as opções da biblioteca continuam disponíveis e com a mesma precisão, mas com uma velocidade aumentada graças a paralelizações feitas usando GPU.\par
+Athanasopoulos et al em 2011\cite{art:REF_ART_3} expandiram a LIBSVM de forma que todas as opções da biblioteca continuam disponíveis e com a mesma precisão, mas com uma velocidade aumentada graças a paralelizações feitas usando GPU.\par
 
 
 \section{Objetivo do Trabalho}\label{sec:LABEL_CHP_1_SEC_B}
-O objetivo deste trabalho é desenvolver 
-uma implementação paralela para GPU de
-uma máquina de vetores de suporte usando o algoritmo Kernel-Adatron 
-%, \emph{Kernel-Adatron Algorithm} 
-
-
-descrito por Colin Campbell e Nello Cristianini~\cite{art:LIVRO_KAA}. Esse algoritmo é mais simples que o SMO implementado pelos artigos referenciados anteriormente e é normalmente recomendado como uma introdução à implementação da máquina de vetores de suporte.
-Além de sua simplicidade, o algoritmo Kernel-Adatron é um forte candidato à implementação paralela por adotar uma metodologia de força bruta. % repetitiva teria alto potencial para mostrar uma melhora em uma versão paralela.
+O objetivo deste trabalho é desenvolver uma implementação paralela para GPU de uma máquina de vetores suporte usando o algoritmo Kernel-Adatron descrito por Colin Campbell e Nello Cristianini \cite{art:LIVRO_KAA}. Esse algoritmo é mais simples que o SMO implementado pelos artigos referenciados anteriormente, e normalmente  recomendado como uma introdução à implementação da máquina de vetores suporte.
+Além de sua simplicidade, o algoritmo Kernel-Adatron é um forte candidato à implementação paralela por adotar um método repetitivo que requer um elevado esforço de processamento. %ele teria um alto potencial para mostrar melhora em uma versão paralela.
 \par
-%Para analisar a performance pretendo desenvolver uma versão sequencial e uma versão %paralela do algoritmo Kernel-Adatron usando o ambiente de GPU. 
+Para avaliar a implementação proposta, usaremos os mesmos conjuntos de dados usados por Catanzaro e Carpenter em seus artigos. Esses conjuntos de dados podem ser encontrados no site do LIBSVM \cite{art:LIBSVM}. 
 
-%silvana: Para avaliar a implementação proposta, usarei os mesmos...
-Para testar essas implementações uso os mesmos 
-
-conjuntos de dados usados por Catanzaro e Carpenter em seus artigos. Esses conjuntos de dados podem ser encontrados no site do LIBSVM. 
-
-%silvana: As métricas de avaliação serão o ganho de velocidade da implementação paralela e a precisão da classificação. Para a realização dos experiemntos, adotaremos a técnica convencional de validação cruzada que consiste em...
-Minha intenção é comparar a velocidade e a precisão usando validação cruzada de 10 partições, classificando 10 conjuntos disjuntos e tirando sua média.
-%silvana: o que é "validação cruzada de 10 folhas"??
-%Felipe: Assim ta melhor?
+As métricas de avaliação serão o ganho de velocidade da implementação paralela e a precisão da classificação. Para a realização dos experimentos, adotaremos a técnica convencional de validação cruzada, que consiste em particionar o conjunto de dados em conjuntos disjuntos e utilizar cada partição como conjunto de validação uma vez.
 
 \section{Organização do Texto}\label{sec:LABEL_CHP_1_SEC_C}
 O restante deste texto está organizado da seguinte forma: 
 \par
-No Capitulo \ref{chp:LABEL_CHP_2} descrevo a evolução da teoria de máquinas de vetores de suporte, começando com a classificação de exemplos com dois parâmetros linearmente separáveis até as perguntas mais complexas: porque é preciso escolher a maior margem possível? como é possível classificar conjuntos que não são linearmente separáveis? como lidar com exemplos imperfeitos e ruídos? Apresento algumas implementações de MVS e explico porque escolhi o algoritmo Kernel-Adatron.
+No Capítulo \ref{chp:LABEL_CHP_2}, descrevemos a evolução da teoria de máquinas de vetores suporte, começando com a classificação de exemplos com dois parâmetros linearmente separáveis, até as perguntas mais complexas: por que é preciso escolher a maior margem possível? como é possível classificar conjuntos que não são linearmente separáveis? como lidar com exemplos imperfeitos e ruídos? Apresentamos algumas implementações de MVS e explicamos porque escolhemos o algoritmo Kernel-Adatron.
 
-No Capítulo \ref{chp:LABEL_CHP_3} descrevo as características principais da programação paralela em GPU.% como funciona o modelo de SIMD, como o processamento é distribuído na placa de vídeo e alguns métodos utilizados.
+No Capítulo \ref{chp:LABEL_CHP_3}, descrevemos as características principais da programação paralela em GPU, a vantagem de se usar a GPU em detrimento da CPU, como ela funciona, para depois descrever como usar esses recursos usando a plataforma CUDA.
 
-No Capítulo \ref{chp:LABEL_CHP_4} apresento 
-%silvana: a implementação paralela do algoritmo...
+No Capítulo \ref{chp:LABEL_CHP_4}, descrevemos como implementamos o Kernel-Adatron. Começamos explicando a estrutura do programa, para em seguida descrever a versão sequencial e depois a versão paralela.
 
-%parte do código sequencial e descrevo algumas dificuldades de implementação. 
+No Capítulo \ref{chp:LABEL_CHP_5}, apresentamos os conjuntos de dados utilizados, o hardware utilizado e quais as métricas usadas para análise. Em seguida apresentamos os resultados dos experimentos.
 
-Explico como é feito a análise de precisão através de validação cruzada. 
-%silvana: da mesma forma que é feita em outros trabalhos ou específica da sua implementação??? Poderia ir para o capítulo 2???
-
-%Em seguida explico como usei CUDA e de que forma o MVS está executando em paralelo. %Por ultimo descrevo como compilar e executar o programa.
-
-No Capítulo \ref{chp:LABEL_CHP_5} descrevo os conjuntos de dados utilizados, o hardware utilizado e quais as métricas usei para análise. Em seguida apresento os resultados dos experimentos.
-
-Por fim, no Capítulo \ref{chp:LABEL_CHP_6} apresento as conclusões deste trabalho e que modificações conseguiram melhorar o desempenho do programa. Para encerrar, descrevo algumas funcionalidades que poderiam ser incluídas/experimentadas futuramente.
+Por fim, no Capítulo \ref{chp:LABEL_CHP_6}, apresentamos as conclusões deste trabalho e que modificações podem melhorar o desempenho do programa.

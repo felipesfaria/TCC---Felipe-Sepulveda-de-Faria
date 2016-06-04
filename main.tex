@@ -6,6 +6,12 @@
 \usepackage{amssymb}
 \usepackage{algorithmic}
 \usepackage{algorithm}
+\usepackage{longtable}
+\floatname{algorithm}{Algoritmo}
+\renewcommand{\listalgorithmname}{Lista de Algoritmos}
+\makeatletter
+\@addtoreset{algorithm}{chapter}% algorithm counter resets every chapter
+\renewcommand{\thealgorithm}{\thechapter.\arabic{algorithm}}% Algorithm # is <chapter>.<algorithm>
 \newcommand*{\captionsource}[2]{%
   \caption[{#1}]{%
     #1%
@@ -19,7 +25,7 @@
 \begin{document}
 
 % título da tese é obrigatório
-\title{Máquina de Vetores de Suporte Paralelo}
+\title{Implementação Paralela para GPU de uma Máquina de Vetores Suporte Usando o Algoritmo Kernel-Adatron}
 
 % autor é obrigatório; máximo de 3 autores
 \author{Felipe Sepulveda de Faria}{\input{elementos-pretextuais/agradecimentos}}
@@ -27,20 +33,20 @@
 %\author{Nome completo aluno 3}{\input{elementos-pretextuais/agradecimentos}}
 
 % orientador é obrigatório
-\advisor[Prof.]{Silvana Rossetto,~M.Sc.}{}
+\advisor[Prof.]{Silvana Rossetto,~D.Sc.}{}
 
 % co-orientador é opcional
-\coadvisor[Prof.]{Aloísio Pina,~M.Sc.}{}
+%\advisor[Prof.]{Aloísio Carlos de Pina,~D.Sc.}{}
 
 % máximo de 3 integrantes da banca (orientador e co-orientador já são adicionados automaticamente)
-\banca[Prof.]{Nome do participante banca 1,~D.Sc.}{COPPE~-~UFRJ}
-\banca[Prof.]{Nome do participante banca 2,~Ph.D.}{COPPE~-~UFRJ}
+\banca[Prof.]{Adriano Joaquim de Oliveira Cruz,~Ph.D}{DCC~-~UFRJ}
+\banca[Prof.]{João Carlos Pereira da Silva,~D.Sc.}{DCC~-~UFRJ}
 %\banca[Prof.]{Nome do participante banca 3,~Ph.D.}{COPPE~-~UFRJ}
 
 \location{Rio~de~Janeiro}{RJ}{Brasil}
 
 % mês e ano de defesa
-\date{Maio}{2016}
+\date{Junho}{2016}
 \maketitle
 
 \startdocument
@@ -75,6 +81,9 @@
 \maketablespage
 
 % Algoritmos
+\makealgorithmspage
+
+% Codigos
 \makelistingspage
 
 % Símbolos (devem estar em ordem alfabética)

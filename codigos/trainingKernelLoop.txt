@@ -1,0 +1,10 @@
+__global__ void trainingKernelLoop(double *sum, const double *alpha, const double *x, const double *y, const double g, const int width, const int height, const int batchStart, const int batchEnd)
+{
+	int idx = threadIdx.x + blockIdx.x * blockDim.x;
+	if (idx > height) return;
+	double outerSum = sum[idx];
+	for (int i = batchStart; i < batchEnd; i++){
+		outerSum += alpha[i] * y[i] * gaussKernel(x, idx, x, i, width, g);
+	}
+	sum[idx] = outerSum;
+}

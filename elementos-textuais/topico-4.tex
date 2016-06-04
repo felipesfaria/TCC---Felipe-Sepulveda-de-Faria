@@ -1,17 +1,28 @@
-\chapter{Desenvolvimento}\label{chp:LABEL_CHP_4}
+\chapter{Implementação Sequencial e Paralela do Algoritmo Kernel-Adatron}\label{chp:LABEL_CHP_4} %\ref{alg:KAA}}
 
-A linguagem escolhida para o desenvolvimento foi o c++ pois possui boa performance e possui muitos exemplos de CUDA disponível no CUDA ToolKit 7.5 \cite{CUDA}. As ferramentas Visual Studio 2013, IDE desenvolvida pela Microsoft, e Rasharper c++, plugin desenvolvido pela JetBrains, foram usadas para facilitar o desenvolvimento. Juntas essas ferramentas oferecem muitas funcionalidades de navegar pelo código, refatoramento, debug e Testes Automatizados. Para o controle de versão foi usado o Git e todo o código fonte incluindo o latex desse relatório se encontram em \url{https://github.com/felipesfaria/FariaTcc}.
+O algoritmo de MVS que decidimos implementar foi o Kernel-Adatron \ref{sec:kaa}, por ser um algoritmo mais custoso esperamos um ganho mais significativo da versão sequencial para a paralela. A implementação desse algoritmo é só um pouco mais complexa que o gradiente ascendente \ref{sec:gradiente}, além de possuir um fluxo fácil de compreender. Não escolhemos o \emph{Quadratic Program Solver}\ref{sec:quadratic} pois mudaria o foco do projeto para um algoritmo mais genérico de otimização. Apesar de o SMO \ref{sec:smo} ser o algoritmo mais usado nos artigos nos quais nos baseamos, achamos que seria interessante implementar primeiro o Kernel-Adatron, já que seria mais fácil de entender como o algoritmo está convergindo, e o que as variáveis representam no resultado final. Além disso, como o SMO é um algoritmo otimizado para a execução sequencial teríamos de desfazer algumas de suas otimizações para funcionar de forma paralela.
 
-\section{Comandos do Programa}
+Descrevemos nesse capítulo os detalhes das implementações sequencial e paralela desenvolvidas para esse projeto. O algoritmo Kernel-Adatron é um algoritmo simples, mas ainda assim, existem 
+questões em aberto que precisam ser tratadas durante a etapa de implementação. Veremos a fundo quais são essas questões e como escolhemos resolvê-las. Descrevemos primeiro como usar o programa, seus comandos de entrada e quais são as saídas esperadas. Em seguida abordamos os códigos comuns no programa que são usados pela versão sequencial e paralela, assim como o formato dos dados de entrada, a estrutura dos dados em memória, o mecanismo de validação cruzada e o kernel gaussiano usado em ambas as implementações.
+Em seguida, descrevemos a versão sequencial, como é feito seu treinamento e a classificação. Por último, explicamos como projetamos a implementação em CUDA para executar o algoritmo na GPU.
+%silvana: dizer que irá descrever como foi projetada e implementada a versão paralela em CUDA
+%Por ultimo explico como executar o algoritmo na GPU através do CUDA.
+
+\section{Ambiente de Programação}
+A linguagem escolhida para o desenvolvimento do algoritmo Kernel-Adatron foi C++, pois possui bom desempenho e vários exemplos de CUDA disponíveis no CUDA ToolKit 7.5 \cite{CUDA}. As ferramentas Visual Studio 2013 (IDE desenvolvida pela Microsoft) e Rasharper C++ (plugin desenvolvido pela JetBrains) foram usadas para facilitar o desenvolvimento. Juntas essas ferramentas oferecem muitas funcionalidades para navegação pelo código, refatoramento, depuração e testes automatizados. Para o controle de versão, foi usado o Git. Todo o código fonte incluindo o texto desse relatório se encontram em \url{https://github.com/felipesfaria/FariaTcc}.
+
+\section{Interface do programa}
 O programa foi feito de forma que alguns parâmetros possam ser recebidos pela linha de comando. 
-Esses parâmetros são carregados no inicio do programa pela classe \texttt{Settings}.
-Se rodar o programa sem comandos todos os parâmetros tem definido um valor default e também é possível enviar o comando -h para ver na tela os comandos possíveis.
+Esses parâmetros são carregados no início do programa pela classe \texttt{Settings}.
+Na Tabela \ref{tab:commands} podemos ver os comandos disponíveis e seus valores padrão, os quais serão usados quando nenhum valor para esse parâmetro for definido. É possível executar o programa com o comando \texttt{-h} para ver a lista de opções.
 
 \begin{table}
+    \caption{Comandos aceitos pelo programa}
+    \label{tab:commands}
     \small
     \centering
-    \begin{tabular}{c|c|c|c}
-        Comando & Descrição & Tipo / Valores aceitos & Default \\ \hline
+    \begin{tabular}{|c|c|c|c|} \hline
+        Comando & Descrição & Valores aceitos & Default \\ \hline
         -c & Constante de margem flexível & double & 999.0 \\ \hline
         -d & Conjunto de Dados &  i:Iris & i \\ 
          &  &  a[1-9]:Adult &  \\ 
@@ -25,59 +36,171 @@ Se rodar o programa sem comandos todos os parâmetros tem definido um valor defa
         -p & Precisão da parada & double & 1e-010 \\ \hline
         -sd & Gerador de numero aleatório & int & time(nullptr) \\ \hline
         -st & Paço inicial & double & 1 \\ \hline
+        -sm & Modo de Step & s:Single Step & s \\
+        & & m:Multi Step & \\ \hline
+        -ua & Modo estocástico & f:false | t:true & f \\ \hline
         -svm & Tipo de MVS & p:Paralelo & s \\
          &  & s:Sequencial &  \\ \hline
-        -t & Threads por Bloco & int & 128 \\
+        -t & Threads por Bloco & int & 128 \\ \hline
     \end{tabular}
-    \caption{Comandos aceitos pelo programa}
-    \label{tab:commands}
 \end{table}
 
-\section{Estrutura de Dados}
-Desenvolvemos o programa para ler arquivos no mesmo formato que os conjuntos de dados apresentados no site do LIBSVM \cite{art:LIBSVM}. Esse formato consiste em apresentar primeiro a classe da amostra representada por um numero, seguida por seus atributos no formato \texttt{indice:valor}, como podemos ver no exemplo \ref{alg:datasample} temos um conjunto de dados com 4 amostras, duas de cada classe, cada uma com 4 atributos.
+%silvana: ...após a execução do programa, é realizada a validação cruzada...
+%Felipe: melhor?
+%silvana: sim!
+Durante a execução do programa será feita uma validação cruzada com o conjunto de dados selecionado. Os dados estão salvos em \texttt{data/} e são carregados de acordo com os comandos de entrada. As métricas e os parâmetros de entrada são acrescentados no arquivo \texttt{results.txt} e, caso o log esteja configurado com \texttt{-l a}, os logs de execução vão aparecer em \texttt{log.txt}. A opção de logs \texttt{-l n} onde não é feita nenhuma saída pelo programa é usada para evitar saída durante os testes automáticos.
+
+\section{Formato dos dados de entrada}
+Desenvolvemos o programa para ler arquivos no mesmo formato que os conjuntos de dados apresentados no site do LIBSVM \cite{art:LIBSVM}. Esse formato consiste em apresentar primeiro a classe da amostra representada por um número, seguida por seus atributos no formato \texttt{indice:valor}. No Código \ref{alg:datasample} vemos parte do conjunto de dados \ref{sec:Iris}, correspondente a quatro exemplos, dois de cada classe, cada um com 4 atributos.
 
 \codec{Conjunto de dados no formato do LIBSVM}{alg:datasample}{codigos/datasample.txt}
 
-A leitura do arquivo com o conjunto de dados é feita pela classe \texttt{DataSet}. Os atributos das amostras são salvos em \texttt{vector<vector<double>> X} e as suas classes em \texttt{vector<double> Y}.
+A leitura do arquivo com o conjunto de dados é feita pela classe \texttt{DataSet}. Os atributos das amostras são salvos em \texttt{vector<vector<double>> X} e suas classes em \texttt{vector<double> Y}.
 
-Para se obter as métricas usadas na avaliação é usado um método conhecido como validação cruzada onde o conjunto de dados é dividido em $n$ partições. Para cada partição $i \in [1,n]$ é feita um treinamento com as outras partições $[1,n]-i$ em seguida é feita a classificação de todas as amostras na partição $i$ para conseguir um resultado de performance para esse conjunto de treinamento e validação. Isso é feito para todos os conjuntos de $n$ de forma que todas as amostras foram classificadas uma vez e participaram de $n-1$ treinamentos, dessa forma conseguimos $n$ avaliações disjuntas de precisão da MVS e uma boa analise de desempenho minimizando os impactos externos que poderiam afetar apenas uma execução.
 
-Para dividir o conjunto de dados em treinamento e avaliação utilizo as classes \texttt{TrainingSet} e \texttt{ValidationSet} que herdam de \texttt{BaseSet}. \texttt{BaseSet} possui um conjunto de dados armazenando as amostras em \texttt{double* x}, as classes em \texttt{double* y}, \texttt{int width} é a quantidade de argumentos e \texttt{int height} é o numero de amostras no conjunto. \texttt{void BaseSet::Init(int height, int width)} define \texttt{height} e \texttt{width} e aloca memória para \texttt{x} e \texttt{y}. As amostras em \texttt{x} são salvas em um único vetor continuo e podem ser endereçadas por \texttt{indiceReal = indiceDaAmostra*width}.
+Para se obter as métricas usadas na avaliação, é usado um método conhecido como validação cruzada, onde o conjunto de dados é dividido em $n$ partições. Para cada partição $i \in [1,n]$ é feito um treinamento com as outras partições $[1,n]-i$. Em seguida, é feita a classificação de todas as amostras na partição $i$ para comparar com o valor real da classe de $i$ e descobrir quantos casos teste foram classificados corretamente. Isso é feito para todos os conjuntos de $n$, de forma que todas as amostras foram classificadas uma vez e participaram de $n-1$ treinamentos, assim, conseguimos $n$ avaliações disjuntas de porcentagem de acertos da MVS e uma boa análise de desempenho minimizando os impactos externos que poderiam afetar apenas uma execução.
+
+Para dividir o conjunto de dados em treinamento e avaliação, utilizamos as classes \texttt{TrainingSet} e \texttt{ValidationSet} que herdam de \texttt{BaseSet}. \texttt{BaseSet} possui um conjunto de dados, os casos teste estão em \texttt{double* x}, as classes em \texttt{double* y}, \texttt{int width} é a quantidade de atributos e \texttt{int height} é o numero de exemplos no conjunto. %\texttt{void BaseSet::Init(int height, int width)} define \texttt{height} e \texttt{width} e aloca memória para \texttt{x} e \texttt{y}.
+Os casos teste em \texttt{x} são salvos em um único vetor contínuo e podem ser endereçados por \texttt{indiceReal = indiceDaAmostra * width}.
 Além dos atributos em \texttt{BaseSet}, \texttt{TrainingSet} possui os valores de $\alpha$ em \texttt{double* alpha} descobertos no treinamento para serem usados na classificação, e \texttt{ValidationSet} mantem a quantidade de classificações corretas para análise posterior.
-Esses objetos são inicializados a partir do método \texttt{void InitFoldSets(TrainingSet *ts, ValidationSet *vs, int fold)}, onde cada conjunto é definido pela função \texttt{void InitFoldSets(TrainingSet *ts, ValidationSet *vs, int fold)} apresentada em \ref{alg:InitFoldSet}.
-
-\codec{Como dividir o conjunto de dados para validação cruzada}{alg:InitFoldSet}{codigos/InitFoldSet.txt}
 
 \section{Kernel Gaussiano}
-Para implementar o algoritmo \ref{alg:KAA} é preciso levar algumas coisas em consideração. O primeiro seria como fazer o Kernel? Inicialmente desenvolvemos a aplicação de forma que implementasse todos os algoritmos listados na tabela \ref{tab:Kernels}, mas logo nas primeiras versões vimos que os resultados com o kernel Gaussiano estavam melhores que os outros, além disso todas as referências, citadas em \ref{chp:LABEL_CHP_1} usaram apenas o kernel gaussiano. Por isso implementamos somente o kernel gaussiano de forma a reduzir o escopo de análise.
+Para implementar o algoritmo Kernel-Adatron é preciso tratar algumas questões. A primeira é que tipo de kernel usar. Inicialmente, desenvolvemos a aplicação implementando todos os kernels listados na tabela \ref{tab:Kernels}, mas, logo nas primeiras versões vimos que os resultados com o kernel gaussiano estavam melhores que os outros, além disso, todas as referências citadas no Capítulo \ref{chp:LABEL_CHP_1} usaram apenas o kernel gaussiano. Por isso implementamos somente o kernel gaussiano de forma a reduzir o escopo de análise.
 
-O kernel gaussiano é definido como $k(\bar{x},\bar{y})=e^{-\big(\frac{|\bar{x}-\bar{y}|^2}{2\sigma^2}\big)}$, para economizar cálculos fazemos algumas simplificações. Substituímos $\frac{1}{2\sigma^2}$ por $\gamma$ que é calculado quando o valor é definido na inicialização do programa. Como $|\bar{x}| = \sqrt{\sum x_i^2}$ podemos simplificar $|\bar{x}-\bar{y}|^2 = \bigg(\sqrt{\sum (x_i-y_i)^2}\bigg)^2=\sum (x_i-y_i)^2$. A função que programamos no final é equivalente à $e^{\big(-\gamma*\sum (x_i-y_i)^2\big)}$.
-Para garantir que a versão sequencial e paralela funcionam da mesma forma e para evitar a repetição de código definimos a função de kernel gaussiano com as diretivas \texttt{\_\_host\_\_} e \texttt{\_\_device\_\_}, como pode ser visto no código \ref{alg:gaussKernel}.
+O kernel gaussiano é definido como $k(\bar{x},\bar{y}) = e^{-\big( \frac{|\bar{x}-\bar{y}|^2} {2\sigma^2}\big)}$. Para economizar cálculos fazemos algumas simplificações. Substituímos $\frac{1}{2\sigma^2}$ por $\gamma$ que é calculado quando o valor é definido na inicialização do programa. Como $|\bar{x}| = \sqrt{\sum x_i^2}$, podemos simplificar $|\bar{x}-\bar{y}|^2 = \bigg(\sqrt{\sum (x_i-y_i)^2}\bigg)^2=\sum (x_i-y_i)^2$. A função que programamos no final é equivalente a $e^{\big(-\gamma*\sum (x_i-y_i)^2\big)}$.
+Para garantir que a versão sequencial e paralela funcionam da mesma forma, e para evitar a repetição de código, definimos a função de kernel gaussiano com as diretivas \texttt{\_\_host\_\_} e \texttt{\_\_device\_\_}, como pode ser visto no Código \ref{alg:gaussKernel}.
 
 \codec{Kernel Gaussiano}{alg:gaussKernel}{codigos/gaussKernel.txt}
 
-\section{Maquinas de Vetores de Suporte}
-Mais uma vez para evitar repetição de código e para utilizar melhor as propriedades do C++ definimos a classe \texttt{BaseSvm} com os métodos \texttt{virtual void Train(TrainingSet *ts)} e \texttt{virtual void Test(TrainingSet *ts, ValidationSet *vs)}, assim é possível definir no código toda a execução do programa só precisando especificar no gerador do MVS qual tipo vamos usar, depois disso desenvolvemos duas classes que herdam de \texttt{BaseSvm}, \texttt{ParallelSvm} e \texttt{SequentialSvm}.
+%silvana: o subtítulo poderia já fazer referência ao algoritmo implementado
+\section{Implementação do Algoritmo Kernel-Adatron}
 
-Programar o algoritmo Kernel-Adatron \ref{alg:KAA} é simples. Porem alguns pontos precisam ser revistos. A condição de parada e o valor de $\eta$. Existem conjuntos de dados difíceis de se calcular que pode fazer com que o programa rode por uma quantidade de tempo considerável. Para isso definimos um limite máximo de iterações que pode ser definido por \texttt{-mi}, seu valor default é \texttt{512}. Outra abstração abordada na implementação está em $\bar{\alpha}-\bar{\alpha_{old}}\approx \bar{0}$. Precisamos definir o quão próximo de zero é o suficiente para nosso programa. Com essa precisão $p$ nós definimos que $a\approx b$ se $|a-b|<p$. Esse parâmetro pode ser configurado por \texttt{-p} e o valor padrão é \texttt{1e-5}. Assim nossa condição de parada fica \texttt{abs(avgDif) > Precision \&\& count < MaxIterations}, onde \texttt{avgDif} é a media de $\bar{\alpha}-\bar{\alpha_{old}}$ e \texttt{count} é o numero de iterações.
+%silvana: retirar ou colocar em outro ponto do texto...
+%Mais uma vez para evitar repetição de código e para utilizar melhor as propriedades do C++ definimos a classe \texttt{BaseSvm} com os métodos \texttt{virtual void Train(TrainingSet *ts)} e \texttt{virtual void Test(TrainingSet *ts, ValidationSet *vs)}, assim é possível definir no código toda a execução do programa só precisando especificar no gerador do MVS qual tipo vamos usar, depois disso desenvolvemos duas classes que herdam de \texttt{BaseSvm}, \texttt{ParallelSvm} e \texttt{SequentialSvm}.
 
-Embora na seção \ref{sec:kaa} tenhamos visto que o algoritmo sempre irá convergir dado um $\eta$ pequeno o suficiente, esse tamanho é difícil de se descobrir. Se for muito grande o algoritmo pode nunca convergir e sempre ultrapassar o ponto ótimo. Se for muito pequeno o algoritmo pode demorar muito para chegar no ponto ótimo. A solução encontrada para o problema foi adotar um $\eta$ flexível. Começando com um valor grande, sempre que percebemos que passamos do ponto ótimo reduzimos $\eta$ na metade. Assim não corremos o risco de arbitrariamente escolher um valor ruim. Permitimos que o valor inicial de $\eta$ seja definido por linha de comando com o comando \texttt{-s} e o default é \texttt{1} como pode ser visto na tabela \ref{tab:commands}.
+%silvana: já falou isso...
+%Programar o algoritmo Kernel-Adatron é simples. Porem alguns pontos precisam ser revistos. 
+%silvana: frase desconexa...
+%Felipe: melhor?
+%silvana: sim!
+Ao implementarmos o algoritmo Kernel-Adatron \ref{alg:KAA}, notamos a necessidade de repensar a condição de parada e o uso do incremento $\eta$.
+Vamos considerar a condição de parada definida no algoritmo: $\bar{\alpha}-\bar{\alpha_{old}}\approx \bar{0}$.
+Precisamos definir o quão próximo de zero é o suficiente para nosso programa. Para isso usamos uma precisão $p$ que definimos como $|a-b|<p$ se $a\approx b$. Esse parâmetro pode ser configurado por \texttt{-p} e o valor padrão é \texttt{1e-5}.
+Existem conjuntos de dados difíceis de se calcular que podem fazer com que o programa demore uma quantidade de tempo considerável para terminar. Para resolver isso, acrescentamos uma nova condição de parada, um limite máximo de iterações que pode ser definido por \texttt{-mi}, seu valor default é \texttt{512}. 
+%silvana: reescrever o trecho abaixo sem trechos de código, apenas dizendo quais são as duas condições
+%Felipe: Melhor?
+%silvana: sim!
+%Assim nossa condição de parada fica \texttt{abs(avgDif) > Precision \&\& count < MaxIterations}, onde \texttt{avgDif} é a media de $\bar{\alpha}-\bar{\alpha_{old}}$ e \texttt{count} é o numero de iterações.
+Assim, nosso programa interrompe o treinamento quando a diferença do valor de $\alpha$ entre duas iterações é menor que $p$, ou quando atingirmos o máximo de iterações definido.
 
-Agora precisamos considerar como sabemos que passamos do ponto para reduzir o valor de $\eta$. Para isso fazemos dois testes. Primeiro vemos se nos afastamos do ponto ótimo, checando se o valor de \texttt{avgDif} aumentou. Depois vemos se o sinal de \texttt{avgDif} mudou, se ele era crescente e virou decrescente ou se ele era decrescente e virou crescente significa que o gradiente mudou de direção. Isso é feito no função mostrada em  \ref{alg:updateStep}
+Embora na seção \ref{sec:kaa} tenhamos visto que o algoritmo sempre irá convergir dado um $\eta$ pequeno o suficiente, esse tamanho é difícil de se descobrir. Se for muito grande, o algoritmo pode nunca convergir e sempre ultrapassar o ponto ótimo. Se for muito pequeno o algoritmo pode demorar muito para chegar no ponto ótimo. A solução encontrada para o problema foi adotar um $\eta$ flexível. Começando com um valor grande, sempre que percebemos que passamos do ponto ótimo reduzimos $\eta$ na metade. Assim, não corremos o risco de arbitrariamente escolher um valor ruim. Permitimos que o valor inicial de $\eta$ seja definido por linha de comando com o comando \texttt{-st} e o default é \texttt{1}, como pode ser visto na Tabela \ref{tab:commands}.
+
+Agora, precisamos considerar como sabemos que passamos do ponto para reduzir o valor de $\eta$, para isso fazemos dois testes. Inicialmente verificamos se nos afastamos do ponto ótimo checando se o valor de \texttt{avgDif} aumentou. Em seguida, verificamos se o sinal de \texttt{avgDif} mudou: se ele era crescente e virou decrescente ou se ele era decrescente e virou crescente, significa que o gradiente mudou de direção. Isso é feito no Código \ref{alg:updateStep}.
 
 \codec{Atualização de $\eta$}{alg:updateStep}{codigos/updateStep.txt}
 
-Percebemos na pratica que alguns parametros convergem mais rapidos que outros. Por isso implementamos dois métodos diferentes de atualização de $\eta$. Um em que só possuimos um valor de $\eta$ aplicado em todos os valores de $\alpha_i$ e outro em que utilizamos um vetor $\bar{\eta}$ onde possuimos um valor de $\eta_i$ para cada $\alpha_i$. Chamamos isso de \texttt{StepMode} que pode ser \texttt{SingleStep} ("s") ou \texttt{MultiStep} ("m") na linha de comando com \texttt{-sm}.
+Percebemos, na prática, que alguns parâmetros convergem mais rápido que outros, por isso, implementamos dois métodos diferentes de atualização de $\eta$. Um em que só possuímos um valor de $\eta$ aplicado em todos os valores de $\alpha_i$, e outro em que utilizamos um vetor $\bar{\eta}$, onde possuimos um valor de $\eta_i$ para cada $\alpha_i$. Chamamos isso de \texttt{StepMode}, ou modo de incremento, que pode ser \texttt{SingleStep} ("s") ou \texttt{MultiStep} ("m") na linha de comando com \texttt{-sm}.
 
-No algoritmo Kernel-Adatron visto os valores de alpha são usados assim que são descobertos. Essa versão é conhecida como Kernel-Adatron estocástico. Já que na nossa versão paralela nãos erá possivel implementar o método estocástico já que calcularemos todos os valores de $\alpha$ paralelamente implementamos as duas versões na forma sequencial. É possivel definir pelo comando \texttt{-ua} se o valor de $\alpha_i$ vai ser atualizado assim que descoberto definimos \texttt{-ua t}, o padrão que utilizamos ou \texttt{-ua f} faz com que os valores de alpha sejam atualizados simultaneamente ao final de cada iteração. No capitulo \ref{chp:LABEL_CHP_5} avaliamos qual forma funciona melhor.
+%silvana: esse parâgrafo está confuso...reescrever. Explicar a diferença entre usar o valor de alpha imediatamente ou não.
+%Felipe: Melhor?
+%silvana: sim
+No Algoritmo \ref{alg:KAA} os valores de $\bar{\alpha}$ são usados assim que são descobertos. Isso muda a execução do programa, já que cada valor de $\alpha_i$ influencia no cálculo de todos os outros. Essa versão é conhecida como Kernel-Adatron estocástico. Na nossa versão paralela, não será possível implementar o método estocástico, pois calculamos todos os valores de $\alpha$ paralelamente.
+%silvana: ..Desse modo, para permitir a comparação direta entre as implementações sequencial e paralela, decidimos implementar a versão mais básica do algoritmo (não-estocástico).
+%Felipe: O não estocástico não é mais simples, só é diferente.
+Desse modo, para permitir a comparação direta entre as implementações sequencial e paralela, decidimos implementar também a forma não-estocástica sequencial.
+%Para medir essa diferença, implementamos as duas versões na forma sequencial. 
+%silvana: o que é "No"??
+%Para usar o  No capitulo \ref{chp:LABEL_CHP_5} avaliamos qual forma funciona melhor. 
+%silvana: não está repetindo o que já foi dito?
+Por padrão, o programa usa a forma não estocástica. Para utilizar a forma estocástica, é necessário usar o comando \texttt{-ua t}, isso só fará diferença se o programa estiver no modo sequencial.
 
-Podemos ver como ficou o loop principal da função de treinamento sequencial em \ref{alg:SequentialSvmTrain}.
+No caso não estocástico, é possível implementar uma otimização simples.
+%silvana: é possível implementar uma otimização simples.
+%tem uma pequena melhoria que podemos fazer. 
+Observando a função de atualização do algoritmo no Código \ref{eq:funcaoDeAtualizaco}, nota-se que na primeira iteração todos os valores de $\alpha$ são nulos, consequentemente, na segunda iteração, todos os valores de $\alpha$ serão iguais à $\eta$. Levando isso em consideração, inicializamos $\alpha$ com o valor do passo inicial.
 
-\codec{Treinamento Sequencial}{alg:SequentialSvmTrain}{codigos/SequentialSvmTrain.txt}
+\begin{equation}\label{eq:funcaoDeAtualizaco}
+\alpha_i \leftarrow min\big\{C,max\big\{0,\alpha_i + \eta-\eta y_i \sum_{j=1}^l y_j \alpha_j k(\bar{x}_j,\bar{x}_i))\big\}\big\}
+\end{equation}
 
-A função de classificação pode ser implementada diretamente da equação matemática sem muita complicação. Utilizamos o $\bar{\alpha}$ encontrado no treinamento e $\bar{x}$ que está armazenado no \texttt{TrainingSet} para descobrir a classe do exemplo de validação.
+Podemos ver como ficou o loop principal da função de treinamento sequencial no Código \ref{alg:SequentialSvmTrain}.
 
-\codec{Classificação Sequencial}{alg:SequentialSvmClassify}{codigos/SequentialSvmClassify.txt}
+\codec{Treinamento: código sequencial}{alg:SequentialSvmTrain}{codigos/SequentialSvmTrain.txt}
 
+A função de classificação pode ser implementada diretamente da equação matemática sem muita complicação. Utilizamos o $\bar{\alpha}$ encontrado no treinamento, e o $\bar{x}$ que está armazenado no \texttt{TrainingSet} para descobrir a classe do exemplo de validação.
+
+\codec{Classificação: código sequencial}{alg:SequentialSvmClassify}{codigos/SequentialSvmClassify.txt}
+
+%\section{Implementação paralela do algoritmo Kernel-Adatron}
 \section{Paralelização}
 
+Para paralelizar um algoritmo para execução em GPU é importante entender quais são os custos associados ao uso da GPU. O \texttt{host} se comunica com o \texttt{device} (GPU) através do barramento da máquina, isso é muito mais lento que operações executadas dentro da própria CPU. 
+%silvana: já foi dito...
+%Felipe: Qual parte? Não seria bom repetir?
+Para copiar valores da memória entre o \texttt{host} e o \texttt{device}, os dados também precisam passar pelo barramento. 
+Muitas vezes essa transferência de dados cria um gargalo na paralelização. Se o kernel não tem muito trabalho para fazer, a transferência de dados antes e depois de executar o kernel pode acabar com o ganho da paralelização.
+
+%Felipe: Tradução de Throughput?
+%silvana: "vazão" ou número de instruções realizadas por unidade de tempo
+A velocidade de clock da GPU costuma ser inferior à velocidade de clock da CPU. 
+Assim, o ganho de desempenho que pode ser obtido com o processamento realizado na GPU
+em geral é obtido pelo fato de conseguirmos 
+%É preciso ter em mente que o seu ganho não vai ser porque a GPU é mais rápida, e sim porque você vai 
+aumentar o número total de instruções por unidade de tempo através da paralelização.
+%silvana: o que é kernel grande e vetor grande?? melhorar frase abaixo...
+Concluímos que é melhor ter kernels que fazem bastante processamento usando vetores com muitos elementos, essas duas condições são claramente satisfeitas pelo algoritmo Kernel-Adatron.
+
+
+\subsection{Funções e Estruturas de Dados Auxiliares}
+
+%Apresentamos agora alguns recursos usados que não tem ligação direta com o algoritmo.
+Destacamos nesta seção alguns recursos que foram usados para complementar a implementação
+do algoritmo.
+
+
+\subsubsection{CUDA\_SAFE\_CALL}
+Um elemento importante no uso de CUDA é a checagem de erros. Muitas chamadas de CUDA retornam uma variável do tipo \texttt{cudaError} cujo conteúdo pode ser \texttt{cudaSuccess} ou o tipo de erro ocorrido. Caso não seja feita a checagem de erros consistentemente é possível que o ocorra um erro na GPU e o programa continue executando normalmente sem que a CPU saiba. Por outro lado, a checagem de erros frequente pode poluir o código e prejudicar a legibilidade. Para resolver isso, usamos o Código \ref{alg:CUDA_SAFE_CALL}. No caso de uma chamada de CUDA não retornar \texttt{cudaSuccess}, será disparada uma exceção que irá registrar o erro e encerrar o programa.
+
+\codec{Macro para checagem de erros de CUDA}{alg:CUDA_SAFE_CALL}{codigos/CUDA_SAFE_CALL.txt}
+
+\subsubsection{CudaArray}
+Para facilitar a manutenção de memória na GPU, criamos a classe \texttt{CudaArray}. Essa classe salva os ponteiros para os vetores alocados no \texttt{host} e no \texttt{device} em \texttt{double* host} e \texttt{double* device}. 
+Existem dois métodos para inicializar os vetores. O primeiro \texttt{void CudaArray::Init(double* host, int size)} salva localmente o ponteiro para o vetor \texttt{host} e aloca a memória no \texttt{device} com o tamanho desejado. Esse objeto pode ser reciclado, e quando é inicializado novamente, a memória só sera realocada se o tamanho for diferente. 
+%silvana: rever frase abaixo
+%Felipe: melhor?
+O outro método de inicialização é usado quando queremos copiar para o \texttt{host} valores criados no \texttt{device}. Para isso, não precisamos passar um ponteiro para um vetor pré alocado na inicialização. Dessa forma, a classe sabe que a memória no vetor \texttt{host} também precisa ser liberada no destrutor.
+
+Os métodos \texttt{void CopyToDevice() const} e \texttt{void CopyToHost() const} servem para copiar os dados entre o \texttt{host} e o \texttt{device}.
+O método \texttt{double GetSum() const} calcula o somatório de todos os valores do vetor, isso é feito sequencialmente no \texttt{host}. % embora existam planos para passar a fazer isso no \texttt{device} na Sessão \ref{sec:melhoriasCuda}.
+
+Para os casos em que se deseja atribuir o mesmo valor a todos os elementos do vetor, criamos o kernel \texttt{initArray}. Esse kernel atribui o valor dado a todos os elementos do vetor de forma paralela, %direto no \texttt{device}, 
+economizando o trabalho de atribuir esses valores no \texttt{host} e depois transferir todos os valores para o \texttt{device}. Assim, trocamos o que seria uma transferência de dados, por uma chamada de kernel, que é muito mais rápida. Esse kernel é chamado pelo método \texttt{void SetAll(double value) const}, que mostramos no Código \ref{alg:initArray}.
+
+\codec{Kernel para inicializar vetores}{alg:initArray}{codigos/initArray.txt}
+
+%silvana: melhor a subseção se chamar algo como "implementação paralela do algoritmo Kernel-Adatron
+\subsection{Implementação Paralela do Kernel-Adatron}
+Agora, já podemos abordar como foi paralelizado o Kernel-Adatron.
+Inicialmente, consideramos paralelizar o kernel gaussiano de forma que cada thread calcularia $(x_i-y_i)^2$, e depois, o somatório seria calculado no \texttt{host}. Isso nos permitiria implementar a versão paralela na forma estocástica, mas o desempenho ficou muito inferior ao sequencial. O tamanho do vetor paralelizado seria do tamanho do caso teste, mas dificilmente encontramos casos teste grandes o suficiente para que o ganho seja significativo. Além disso, precisamos constantemente copiar os dados entre o \texttt{host} e o \texttt{device}, que nos fez optar por não implementar o método estocástico na nossa paralelização. Se os valores de $\bar{\alpha}$ só são atualizados no final de cada iteração, perdemos nossa dependência de dados e podemos calcular cada $\alpha_i$ em uma thread separada.
+
+Ao adotar esse método, nossos kernels ficaram com muito trabalho para fazer, o que é ótimo para paralelização.
+%, já que conseguimos deixar a maior parte do algoritmo paralelo. 
+Mas isso trouxe um problema, assim que começava a executar o kernel, o monitor apagava e o computador parava de responder e não voltava a funcionar até que fosse reiniciado. Após algumas investigações do que podia estar por trás desse comportamento, descobrimos que se tratava de um problema do Windows. 
+%Como mencionamos na seção \ref{sec:GPU}, diferente da CPU, a GPU não possui muita capacidade de controle de fluxo, fazendo com que ela não seja adequada para escalonamento e troca de contexto. 
+Quando enviamos kernels muito demorados para a GPU, ela executa o kernel até o fim, e as outras chamadas do sistema operacional para a GPU ficam paradas na fila, até que o kernel termine.
+A funcionalidade \emph{Timeout Detection and Recovery}, TDR, desativa a aplicação se a GPU não responde após dois segundos. No nosso caso, o Windows 10 não estava voltando a funcionar após a aplicação ser desativada, fazendo o sistema operacional parar de responder e deixando a tela preta.
+
+Esse tempo de dois segundos poderia ser aumentado ou a funcionalidade desativada, mas preferimos adotar uma solução que fizesse o programa funcionar sem que o usuário precisasse alterar as configurações de seu sistema operacional. A solução encontrada foi particionar o kernel em lotes, assim, entre os kernels, a GPU voltaria a responder ao sistema operacional. Criamos o kernel \texttt{trainingKernelLoop}, Código \ref{alg:trainingKernelLoop}, que separa em lotes o somatório $\sum_{j=1}^l y_j \alpha_j k(\bar{x}_j,\bar{x}_i))$ de forma que cada kernel faça parte do somatório paralelamente. O valor do somatório é salvo em um CudaArray, de forma que, quando um novo kernel é chamado, ele é capaz de acessar o somatório do kernel anterior para todos os valores de i.
+
+\codec{Kernel de Treinamento em Lotes}{alg:trainingKernelLoop}{codigos/trainingKernelLoop.txt}
+
+No final, invocamos outro kernel que usará o valor final desse somatório para atualizar cada $\alpha_i$ paralelamente. Calculamos a diferença do valor de cada $\alpha_i$ dentro desse kernel, de forma que, depois dele, precisamos somá-los e checar nossa condição de parada. Precisamos criar duas versões desse kernel para considerar os modos de incremento. Podemos ver o modo multi-step no Código \ref{alg:trainingKernelFinishMultiple}. A diferença no modo single-step, é que recebemos o step em um valor ao invés de um vetor e não precisamos atualizá-lo dentro do kernel.
+
+%silvana: referenciar no texto!!
+\codec{Kernel que Finaliza o Treinamento em Lotes no Modo Multi-Step}{alg:trainingKernelFinishMultiple}{codigos/trainingKernelFinishMultiple.txt}
+
+Para a classificação, podemos economizar tempo não copiando o vetor \texttt{caAlpha} para o \texttt{host}, já que ele continua na memória da GPU quando o treinamento termina. Para a aplicação, poderíamos deixar \texttt{caAlpha} o tempo todo no \texttt{device}, mas copiamos ele para o \texttt{host} para sabermos a quantidade de vetores suporte. Isso só serve para avaliação.
+
+A classificação é bem simples, e apenas paralelizamos o loop feito no Código \ref{alg:SequentialSvmClassify} como podemos ver no Código \ref{alg:classificationKernel}.
+
+\codec{Kernel de Classificação}{alg:classificationKernel}{codigos/classificationKernel.txt}

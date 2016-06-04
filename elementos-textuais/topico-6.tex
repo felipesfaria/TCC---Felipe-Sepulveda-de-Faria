@@ -1,6 +1,40 @@
-\chapter{Conclusão e Trabalhos Futuros}\label{chp:LABEL_CHP_6}
-\section{Conclusão}\label{sec:LABEL_CHP_6_SEC_A}
-Conclusão vai aqui
+\chapter{Conclusão}\label{chp:LABEL_CHP_6}
 
-\section{Trabalhos Futuros}\label{sec:LABEL_CHP_6_SEC_B}
-Trabalhos futuros, smo, redução, multi-classe, outros kernels.
+%silvana: acho melhor começar com uma síntese do objetivo do trabalho...
+%silvana: frase muito grande...
+%Felipe: Melhor?
+%Nosso objetivo inicial 
+Nesse trabalho, desenvolvemos uma versão sequencial e uma versão paralela de uma máquina de vetores suporte usando o algoritmo Kernel-Adatron. Para a paralelização escolhemos a GPU e fizemos isso usando a plataforma CUDA.
+%Ao entendermos a teoria por trás da 
+Máquina de vetores suporte é uma técnica de aprendizado de máquina que projeta dados de problemas que não são linearmente separáveis em um espaço de dimensão maior onde eles podem ser separados. Para separá-los usamos o hiperplano separador que é encontrado resolvendo a dual lagrangiana desse problema, de forma que nosso resultado é um vetor $\bar{\alpha}$. O algoritmo Kernel-Adatron atualiza todos os elementos desse vetor com o seu gradiente em diversas iterações até chegar no seu valor ótimo.
+
+As GPUs que evoluíram para processar imagens e renderizar objetos em 3 dimensões tem uma alta capacidade de paralelização, com vários núcleos capazes de executar instruções em vários elementos distintos de um vetor. A CUDA é uma plataforma de programação da NVIDIA que permite que desenvolvedores explorem esse potencial em aplicações que não são relacionados à computação gráfica.
+
+Neste trabalho exploramos a capacidade de processamento paralelo das GPUs para reduzir o tempo de execução do algoritmo Kernel-Adatron. A versão desse algoritmo que vimos em \cite{art:LIVRO_KAA} adotava um modelo estocástico, que não era viável na versão paralela pois possui uma dependência no laço principal do algoritmo. Por isso implementamos uma versão sequencial estocástica e não estocástica e vimos que elas alcançam a mesma porcentagem de acertos.
+
+Ao comparar nossa versão com o LIBSVM, vimos que alcançamos porcentagens de acertos bastante próximas. Em tempo de execução ainda estamos longe, o que mostra o quão avançado o SMO é em relação ao Kernel-Adatron.
+
+Para medir a qualidade da nossa paralelização, comparamos nossa versão sequencial com a paralela. A porcentagem de acertos ficou próxima, variando em menos de 1\% em alguns casos e sendo exatamente igual na maioria. Ao comparar o tempo de execução do programa entre as versões conseguimos um speedup de duas até seis vezes melhor.
+
+\section{Trabalhos Futuros}
+
+Separamos as melhorias que poderiam ser feitas em nosso programa em duas seções. As melhorias na máquina de vetores suporte, que consistem em aplicar técnicas mais avançadas de MVS; % para obtermos nossos resultados 
+e as melhorias na implementação paralela que seriam formas de utilizar melhor os recursos da GPU.
+
+Além dessas melhorias poderiam ser feitos mais experimentos. Analisando, por exemplo, os conjuntos maiores para descobrir quais parâmetros dariam um melhor resultado para esses conjuntos.
+%Silvana: explicar quais experimentos e com qual finalidade.
+
+
+\subsection{Melhorias na MVS}
+
+Fazer a máquina de vetores suporte multi-classe é relativamente simples a partir de uma máquina de vetores suporte binária, como o Kernel-Adatron. Para isso é necessário quebrar a classificação em problema menores. Em vez de treinar apenas uma MVS se treina uma MVS para cada classe, que vai aprender se um exemplo é ou não dessa classe.
+
+Além disso, é possível modificar o algoritmo Kernel-Adatron para fazer regressão ao invés de classificação. Este processo é fácil de se encontrar e está descrito em \cite{art:LIVRO_KAA}.
+
+\subsection{Melhorias na implementação paralela em GPU} \label{sec:melhoriasCuda}
+
+Como foi mencionado por \cite{art:REF_ART_2}, GPUs possuem mais unidades lógicas de float do que de double. Seria interessante modificar o programa para usar os dois tipos para comparar sua execução.
+
+Na nossa implementação só usamos a memória global, um aproveitamento maior da hierarquia de memória da GPU no nosso programa poderia aumentar muito o speedup encontrado. Um primeiro experimento desse tipo poderia ser feito usando a memória compartilhada, que é visível para todas as threads dentro de um bloco e requer tempo de acesso menor que a memória global. Podemos nos aproveitar do fato que cada thread atualiza um $\alpha_i$ e usa o mesmo $\bar{x}_i$ em todas suas iterações. Considerando que $C$ é o conjunto de índices de $\alpha_i$ que são atualizados por um bloco, se copiarmos todos os exemplos $\bar{x}_i\quad|\quad i\in C$ para a memória compartilhada já poderíamos ter um ganho no speedup.
+
+Em diversas partes do algoritmo precisamos do somatório dos valores de um vetor, como para medir a condição de parada no treinamento e para descobrir o sinal da função de classificação. Na nossa implementação isso é feito de forma sequencial na CPU. Entretanto, existem algoritmos bem definidos e eficientes de somatório de vetores em GPU que poderiam ser implementados, como o algoritmo descrito por Mark Harris em \cite{harris2007optimizing}.

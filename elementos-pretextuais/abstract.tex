@@ -1,1 +1,7 @@
-In this project I describe the development of a binary classifier using a support vector machine algorithm known as Kernel - Adatron Algorithm for Sequential and parallel versions. The parallel version runs on GPU using it's SIMD model (Single Instruction Multiple Data ). I latter analyze the different performance in time and accuracy between the various versions and changing the algorithm's parameters.
+A support vector machine (SVM) is a machine learning method.
+We use a data set to teach the machine to distinguish between two known groups. Once trained, the machine is able to predict to which group new entries that have not been seen before belong.
+The training step consists of iterating several times over the entire training set doing calculations with data.
+To classify new entries we do calculations with values obtained during the training stage to predict to wich class the new entry belongs to.
+This process is very costly, since the data set needs to be large to have a good percentage of correct classification, so it is an interesting method to be parallelized in GPU. GPUs have a parallel processing capacity far above the CPU, but its use is not trivial and it is necessary to adapt the algorithms to its architecture.
+In this work we implemented a program to run a sequential and parallel support vector machine. The algorithm chosen to implement was Kernel-Adatron, because it is a simple SVM algorithm that has a potential gain with parallelization on the GPU.
+We evaluate the algorithm as to the accuracy obtained in the classification and compare the execution time of the parallel version and the sequential version.

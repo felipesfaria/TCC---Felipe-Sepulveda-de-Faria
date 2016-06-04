@@ -1,0 +1,6 @@
+__global__ void classificationKernel(double *saida, const double *tX, const double *tY, const double *vX, const double *alpha, const double g, const int index, const int width, const int max)
+{
+	int idx = threadIdx.x + blockIdx.x * blockDim.x;
+	if (idx > max) return;
+	saida[idx] = tY[idx] * alpha[idx] * gaussKernel(tX, idx, vX, index, width, g);
+}

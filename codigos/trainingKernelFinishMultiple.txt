@@ -1,0 +1,10 @@
+__global__ void trainingKernelFinishMultiple(double *alpha, double *sum, const double *y, const int nSamples, double *step, double *last, const double C)
+{
+	int idx = threadIdx.x + blockIdx.x * blockDim.x;
+	if (idx > nSamples) return;
+	double newAlpha = calcAlpha(alpha[idx], sum[idx], y[idx], step[idx], C);
+	sum[idx] = 0.0;
+	auto dif = newAlpha - alpha[idx];
+	updateStep(step[idx], last[idx], dif);
+	alpha[idx] = newAlpha;
+}

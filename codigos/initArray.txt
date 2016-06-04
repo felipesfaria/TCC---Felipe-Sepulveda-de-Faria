@@ -1,0 +1,6 @@
+__global__ void initArray(double *array, const double value, const int max)
+{
+	int idx = threadIdx.x + blockIdx.x * blockDim.x;
+	if (idx < max)
+		array[idx] = value;
+}
