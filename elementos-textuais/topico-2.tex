@@ -12,7 +12,7 @@ Abordaremos nesse trabalho a máquina classificadora binária, já que é precis
 \section{Superfícies de Decisão Lineares}
 Uma forma simples de se criar um classificador é através de uma superfície de decisão linear. Dado um conjunto de dados $(\bar{x}_i,y_i)$ $i\in[1,t]$, onde $t$ é o tamanho do conjunto e $\bar{x}_i \in \mathbb{R}^n$ são os atributos de cada exemplo, tambem chamado de caso teste, e $y_i \in \{ -1,+1 \}$ que é a classe do exemplo definida como $+1$ ou $-1$, se o conjunto for linearmente separável é possível criar uma superfície de decisão linear (reta, plano ou hiperplano) que separa esse conjunto de dados.
 
-Uma vez encontrado o plano separador, a classificação fica fácil. Como podemos ver na Figura \ref{fig:LABEL_FIG_1}, se definirmos esse plano como $\bar{d}\cdot \bar{x} = \bar{d}\cdot \bar{c}$, onde $\bar{d}$ é o vetor ortogonal ao plano, $\bar{c}$ é o vetor de deslocamento de $\bar{d}$ e $\bar{x}$ são os pontos pertencentes a reta, podemos classificar um ponto $\bar{\alpha}$ como pertencendo a uma classe usando uma função discriminante (Equação \ref{eq:LABEL_EQ_1}) onde a classe é definida pelo sinal do resultado.
+Uma vez encontrado o plano separador, a classificação fica fácil. Como podemos ver na Figura \ref{fig:LABEL_FIG_1}, se definirmos esse plano como $\bar{d}\cdot \bar{p} = \bar{d}\cdot \bar{c}$, onde $\bar{d}$ é o vetor ortogonal ao plano, $\bar{c}$ é o vetor de deslocamento de $\bar{d}$ e $\bar{p}$ são os pontos pertencentes a reta, podemos classificar um ponto $\bar{x}$ como pertencendo a uma classe usando uma função discriminante (Equação \ref{eq:LABEL_EQ_1}) onde a classe é definida pelo sinal do resultado.
 
 \begin{equation}
 f(\bar{\alpha})=sgn((\bar{\alpha}-\bar{c})\cdot\bar{d})
@@ -22,13 +22,13 @@ f(\bar{\alpha})=sgn((\bar{\alpha}-\bar{c})\cdot\bar{d})
 \begin{figure}
   \centering
   \includegraphics[width=0.4\textwidth]{imagens/svm_1.png}
-  \captionsource{Classificação de um ponto $\bar{\alpha}$ por uma superfície de decisão linear}{\cite{art:LIVRO_SVM}}
+  \caption{Classificação de um ponto $\bar{x}$ por uma superfície de decisão linear}
   \label{fig:LABEL_FIG_1}
 \end{figure}
 
 %silvana: definir perceptron...
 %silvana: Ok!
-Assumindo que nossos dados são linearmente separáveis, já sabemos qual a função discriminante, falta encontrar os parâmetros $\bar{c}$ e $\bar{d}$ que classificam corretamente esse conjunto de dados. Existem algumas formas de encontrar os parâmetros que definem essa superfície de decisão linear, um método semelhante à máquina de vetores suporte é o perceptron \cite{art:LIVRO_SVM}. São atribuídos valores aleatórios a $\bar{c}$ e $\bar{d}$ e o perceptron classifica o conjunto de dados usando a função discriminante. A cada iteração, o perceptron corrige os valores de $\bar{c}$ e $\bar{d}$ para os dados que estiverem classificados de forma errada. Dessa forma, se o conjunto de dados for linearmente separável, o perceptron convergirá para a superfície de decisão linear.
+Assumindo que nossos dados são linearmente separáveis, já sabemos qual a função discriminante, falta encontrar os parâmetros $\bar{c}$ e $\bar{d}$ que classificam corretamente esse conjunto de dados. Existem algumas formas de encontrar os parâmetros que definem essa superfície de decisão linear. Um método semelhante à máquina de vetores suporte é o perceptron \cite{art:LIVRO_SVM}. São atribuídos valores aleatórios a $\bar{c}$ e $\bar{d}$ e o perceptron classifica o conjunto de dados usando a função discriminante. A cada iteração, o perceptron corrige os valores de $\bar{c}$ e $\bar{d}$ para os dados que estiverem classificados de forma errada. Dessa forma, se o conjunto de dados for linearmente separável, o perceptron convergirá para a superfície de decisão linear.
 
 Essa superfície separa perfeitamente os exemplos usados no treinamento, mas pode ter muitos erros para classificar outros dados. Isso ocorre porque o perceptron não tem nenhum critério para saber se a superfície é boa ou ruim. Usando a Figura \ref{fig:LABEL_FIG_2} como exemplo, suponhamos que os pontos +* e -* não estavam no conjunto de treinamento e o perceptron chegou na linha pontilhada como superfície de separação. A linha solida seria mais adequada, já que divide o espaço de forma mais justa reduzindo a chance de ter um ponto classificado errado.
 
@@ -54,9 +54,9 @@ Classificadores de margem máxima têm como objetivo encontrar a superfície cen
 
 Como estamos procurando a margem máxima dado um conjunto de margens possíveis, faz sentido abordar o problema como um problema de otimização.
 
-Formalmente, problemas de otimização são definidos como: $\underset{\bar{x}}{min}\phi(\bar{x})$, dado que $h_i(\bar{x})\ge c_i$ $\forall \bar{x} \in \mathbb{R}^n$. Onde $\phi: \mathbb{R}^n\rightarrow \mathbb{R}$ é a função objetivo que se quer minimizar, e $h_i:\mathbb{R}^n\rightarrow\mathbb{R}$ é o conjunto de funções que limitam os valores de $\phi(\bar{x})$.
+Formalmente, problemas de otimização são definidos como: $\underset{\bar{x}}{\min}\phi(\bar{x})$, dado que $h_i(\bar{x})\ge c_i$ $\forall \bar{x} \in \mathbb{R}^n$. Onde $\phi: \mathbb{R}^n\rightarrow \mathbb{R}$ é a função objetivo que se quer minimizar, $h_i:\mathbb{R}^n\rightarrow\mathbb{R}$ é o conjunto de funções que limitam os valores de $\phi(\bar{x})$, e $c_i$ são restrições do valor de $\bar{x}$.
 
-Podemos então traduzir o problema de separar o conjunto de dados em um problema de otimização onde o objetivo é maximizar a distância entre os hiperplanos de suporte. Os hiperplanos suporte são hiperplanos paralelos que tangenciam os conjuntos de exemplos de cada classe e vetores suporte são pontos pertencentes a essas superfícies, assim, o que nós queremos é a função da superfície de decisão ótima $\bar{w}^*\cdot\bar{x}=b^*$ onde a projeção entre os vetores suporte $m^*=|\bar{x}_p - \bar{x}_q|cos\gamma$ é máxima como podemos ver na Figura \ref{fig:LABEL_FIG_4}. 
+Podemos então traduzir o problema de separar o conjunto de dados em um problema de otimização onde o objetivo é maximizar a distância entre os hiperplanos de suporte. Os hiperplanos suporte são hiperplanos paralelos que tangenciam os conjuntos de exemplos de cada classe e vetores suporte são pontos pertencentes a essas superfícies. Assim, o que nós queremos é a função da superfície de decisão ótima $\bar{w}^*\cdot\bar{x}=b^*$ onde a projeção entre os vetores suporte $m^*=|\bar{x}_p - \bar{x}_q|cos\gamma$, o tamanho da distancia entre os vetores multiplicado pelo coseno do ângulo entre eles, é máxima, como podemos ver na Figura \ref{fig:LABEL_FIG_4}. 
 
 \begin{figure}
   \centering
@@ -77,17 +77,19 @@ m^* &= |\bar{x}_p-\bar{x}_q|cos\gamma\\
 \end{split}
 \end{equation}
 
-Queremos $m^*$ máximo mas para facilitar nossos cálculos mais à frente vamos reescrever nossa função objetivo como:
+Queremos o vetor $\bar{w}$ que nos dê $m^*$ máximo mas para facilitar nossos cálculos mais à frente vamos reescrever nossa função objetivo como:
 
 \begin{equation}\label{eq:funcaoObjetivo}
 \begin{split}
-m^*=\frac{2k}{|\bar{w}^*|} &= max \frac{2k}{|\bar{w}|} \\
-    &= min \frac{|\bar{w}|}{2k} \\
-    &= min \frac{|\bar{w}|^2}{2k}  \\
-    &= min \frac{1}{2k} \bar{w}\cdot\bar{w}  \\
-    &= min \frac{1}{2} \bar{w}\cdot\bar{w}
+m^*=\frac{2k}{|\bar{w}^*|} &= \max \frac{2k}{|\bar{w}|} \\
+    &= \min \frac{|\bar{w}|}{2k} \\
+    &= \min \frac{|\bar{w}|^2}{2k}  \\
+    &= \min \frac{1}{2k} \bar{w}\cdot\bar{w}  \\
+    &= \min \frac{1}{2} \bar{w}\cdot\bar{w}
 \end{split}
 \end{equation}
+
+Na Função \ref{eq:funcaoObjetivo} o primeiro passo se justifica pois a maximização de uma função é igual a minimização da função inversa. O segundo passo se justifica pois o tamanho do vetor $|\bar{w}|$ é sempre positivo e a transformação de $|\bar{w}|$ para $|\bar{w}|^2$ é monotônica, então o valor de $\bar{w}$ que minimiza $|\bar{w}|$ é o mesmo que minimiza $|\bar{w}|^2$. O último passo é justificado pois a otimização não varia com a multiplicação de uma constante, assim podemos definir $k=1$ e remove-lo da equação.
 
 Nossas restrições $h_i$ podem ser escritas como:
 %Felipe: essa notação ta certa o tal que? precisa de uma chave aí?
@@ -106,10 +108,10 @@ Essas restrições podem ser comprimidas na Equação \ref{eq:restricoesComprimi
     \bar{w}^*\cdot(y_i\bar{x}_i) \ge 1+y_i b \quad \forall (\bar{x}_i,y_i)\in D
 \end{equation}
 
-Assim, um classificador por margem máxima fica definido como: dado um conjunto de dados linearmente separáveis $D=(\bar{x}_i,y_i) \subseteq \mathbb{R}^n\times\{+1,1\}$, podemos encontrar a superfície máxima de separação, $\bar{w}^*\cdot\bar{x}=b^*$, otimizando o problema $min\phi(\bar{w},b)=\underset{\bar{w},b}{min}\frac{1}{2}\bar{w}\cdot\bar{w}$ sujeito às restrições da Equação \ref{eq:restricoesComprimidas}.
+Assim, um classificador por margem máxima fica definido como: dado um conjunto de dados linearmente separáveis $D=(\bar{x}_i,y_i) \subseteq \mathbb{R}^n\times\{+1,1\}$, podemos encontrar a superfície máxima de separação, $\bar{w}^*\cdot\bar{x}=b^*$, otimizando o problema $\min\phi(\bar{w},b)=\underset{\bar{w},b}{\min}\frac{1}{2}\bar{w}\cdot\bar{w}$ sujeito às restrições da Equação \ref{eq:restricoesComprimidas}.
 \par
 
-Uma máquina de vetores suporte é o problema dual do classificador de margem máxima. Podemos entender um problema dual como uma versão análoga do problema onde, ao invés de encontrar o vetor que define a superfície de separação $w$, queremos encontrar o conjunto de valores de $\alpha$ do qual podemos inferir $w$. Para resolver esse problema dual, utilizamos a técnica dual Lagrangiana, a qual pode ser vista nos trabalhos de \cite{art:LIVRO_SVM} e \cite{art:LIVRO_KAA}.
+Uma máquina de vetores suporte é o problema dual do classificador de margem máxima. Podemos entender um problema dual como uma versão análoga do problema onde, ao invés de encontrar o vetor que define a superfície de separação $w$, queremos encontrar o conjunto de valores de $\bar{\alpha}$ do qual podemos inferir $w$. Para resolver esse problema dual, utilizamos a técnica dual Lagrangiana, a qual pode ser vista nos trabalhos de \cite{art:LIVRO_SVM} e \cite{art:LIVRO_KAA}.
 
 O método de otimização Lagrangiana reescreve um problema de otimização da forma:
 \begin{equation}
@@ -207,7 +209,7 @@ Chamamos essa simplificação de truque do kernel. Existe uma série de restriç
     \caption{Kernels Populares e Suas Variáveis Livres}
     \label{tab:Kernels}
     \begin{tabular}{|c|c|c|} \hline
-            Kernel & Função & Parâmetros Livres \\ \hline
+            Kernel & Função & Variáveis Livres \\ \hline
         Kernel Linear & $k(\bar{x},\bar{y})=\bar{x}\cdot\bar{y}$ & nenhum \\
         Kernel Homogêneo Polinomial & $k(\bar{x},\bar{y})=(\bar{x}\cdot\bar{y})^d$ & $d\ge2$ \\
         Kernel Não-Homogêneo Polinomial & $k(\bar{x},\bar{y})=(\bar{x}\cdot\bar{y}+c)^d$ & $d\ge2, c > 0$ \\

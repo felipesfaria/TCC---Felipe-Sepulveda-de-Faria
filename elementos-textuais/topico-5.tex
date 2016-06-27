@@ -13,12 +13,12 @@ Esse conjunto de dados distingue 3 tipos de iris, uma especie de flor. Os atribu
 \subsection{Adult} \label{sec:Adult}
 O objetivo desse conjunto de dados é analisar a faixa de renda de um adulto americano baseado em diversos fatores. A classificação prevê se o individuo tem renda de mais ou menos que 50 mil dólares por ano. Alguns dos atributos são idade, país de origem, etnia, estado civil e escolaridade. Cada exemplo possui 119 atributos. Existem 9 versões desse conjunto de dados variando o número de amostras entre 1605 e 16100.
 \subsection{Web} \label{sec:Web}
-Esse conjunto de dados determina se uma página pertence a uma categoria ou não baseado na presença de palavras chave. Cada exemplo possui 300 atributos. Existem 8 versões desse conjunto de dados variando o número de amostras entre 2477 e 17188.
+Esse conjunto de dados determina se uma página pertence a uma categoria ou não baseado na presença de palavras chave. Cada exemplo possui 300 atributos que representam se uma palavra esta presente ou não na página. Existem 8 versões desse conjunto de dados variando o número de amostras entre 2477 e 17188.
 
 \subsection{Tratamento dos dados}
 No conjunto {\em Iris}, foi necessário remover uma das classes para que o conjunto fosse compatível com o classificador binário. As duas classes remanescentes são linearmente separáveis de forma que o conjunto serviu para facilitar os testes no início do desenvolvimento.
 
-Os conjuntos \emph{Adult} e \emph{Web} possuem atributos simbólicos não-binários, com valores possíveis definidos em conjuntos finitos, como por exemplo $PaisDeOrigem \in \left [ Brasil,Espanha,Noruega \right ]$. É preciso atribuir valores numéricos para esses atributos para que funcionem com a máquina de vetores suporte. Para isso trocamos cada um desses atributos por atributos binários. Substitui-se o atributo $PaisDeOrigem$, por 3 atributos binários que podem ser verdadeiro ou falso, $Brasileiro \in \left [ 0,1 \right ]$, $Espanhol \in \left [ 0,1 \right ]$ e $Noruegues \in \left [ 0,1 \right ]$. Os conjuntos de dados disponíveis no site do LIBSVM já foram convertidos para esse padrão.
+O conjunto \emph{Adult} possui atributos simbólicos não-binários, com valores possíveis definidos em conjuntos finitos, como por exemplo $PaisDeOrigem \in \left [ Brasil,Espanha,Noruega \right ]$. É preciso atribuir valores numéricos para esses atributos para que funcionem com a máquina de vetores suporte. Para isso trocamos cada um desses atributos por atributos binários. Substitui-se o atributo $PaisDeOrigem$, por 3 atributos binários que podem ser verdadeiro ou falso, $Brasileiro \in \left [ 0,1 \right ]$, $Espanhol \in \left [ 0,1 \right ]$ e $Noruegues \in \left [ 0,1 \right ]$. Os conjuntos de dados disponíveis no site do LIBSVM já foram convertidos para esse padrão. O conjunto \emph{Adult} possuía 14 atributos multivariados que foram convertidos em 119 atributos binários.
 
 \section{Métricas de avaliação}
 Para avaliar nossa máquina de vetores suporte, medimos a porcentagem de acertos de nosso programa. Para isso, calculamos a porcentagem de casos de teste que conseguimos classificar corretamente durante a validação cruzada. 
@@ -26,7 +26,7 @@ Para avaliar nossa máquina de vetores suporte, medimos a porcentagem de acertos
 %Usando validação cruzada, para construir cada par de conjuntos de treinamento e de teste, o conjunto de dados é dividido aleatoriamente em n conjuntos disjuntos de igual tamanho (chamados partições), T1, ..., Tn. Então são conduzidas n rodadas. Em cada rodada, o conjunto de teste é Ti e o conjunto de treinamento é a união de todos os outros Tj, j diferente de i. A precisão então é dada pela média das porcentagens de acertos das n rodadas.
 
 
-Para avaliar nossa paralelização, comparamos o tempo de execução sequencial e paralelo com conjuntos de teste de tamanhos diferentes. O tempo medido foi o tempo total de execução do programa. Escolhemos não comparar somente o tempo de treinamento ou classificação pois isso daria uma vantagem à versão paralela, já que não levaria em consideração o tempo em que se copia dados para a memória da GPU, um dos principais gargalos da paralelização. A partir dos tempos medidos, calculamos o speedup (ou aceleração), que é uma métrica de avaliação comum de paralelização onde se divide o tempo sequencial pelo paralelo, $\frac{t_{sequencial}}{t_{paralelo}}$. 
+Para avaliar nossa paralelização, comparamos o tempo de execução sequencial e paralelo com conjuntos de teste de tamanhos diferentes. O tempo medido foi o tempo total de execução do programa. Escolhemos não comparar somente o tempo de treinamento ou classificação pois isso não levaria em consideração o tempo em que se copia dados para a memória da GPU. A partir dos tempos medidos, calculamos o speedup (ou aceleração), que é uma métrica de avaliação comum de paralelização onde se divide o tempo sequencial pelo paralelo, $\frac{t_{sequencial}}{t_{paralelo}}$. 
 %silvana: quais parâmetros são esses???
 %Para que essa fosse uma comparação justa, todos os parâmetros foram iguais para versão sequencial e paralela. 
 %Felipe: Mudei isso para a próxima sessão
@@ -75,7 +75,7 @@ Variamos nosso conjunto de dados (-d) somente entre $a1$ e $w1$ que são os meno
 
 Testamos a versão sequencial (-svm s) e paralela (-svm p) para garantir que a porcentagem de acerto entre os dois é próxima.
 
-O numero de threads (-t) só variamos no caso paralelo, e usamos os valores $32$, $128$ e $512$. A porcentagem de acerto não deveria variar com o número de threads, de forma que queremos descobrir qual tem o menor tempo de execução.
+O número de threads (-t) só variamos no caso paralelo, e usamos os valores $32$, $128$ e $512$. A porcentagem de acerto não deveria variar com o número de threads, de forma que queremos descobrir qual tem o menor tempo de execução.
 
 Só alteramos o parâmetro que define se o algoritmo {\em kernel-adatron}  é estocástico (-ua t) ou não estocástico (-ua f) para a versão sequencial, já que a versão paralela nunca é estocástica. Se a versão estocástica tiver uma maior porcentagem de acertos isso deverá indicar que a versão sequencial terá porcentagem de acertos melhor que a paralela.
 
@@ -257,6 +257,7 @@ Na Tabela \ref{tab:bestResults2w} apresentamos o tempo sequencial e paralelo con
   \label{fig:GraficoWeb}
 \end{figure}
 
+Em todas os testes a versão paralela executou em menos tempo que a sequencial. O comportamento para conjuntos grandes foi similar entre os dois conjuntos, mas percebemos que tivemos uma variação anormal no speedup para o conjunto \emph{Adult}. Pelos nossos testes não conseguimos identificar porque ele cresce, depois diminui depois estabiliza.
 
 \section{Resultados do LIBSVM}
 
@@ -287,5 +288,3 @@ Para efeito de comparação, medimos os resultados do LIBSVM \cite{art:LIBSVM}. 
 Quanto à porcentagem de acertos, nossos resultados ficaram bem próximos do LIBSVM com o conjunto {\em Adult}, de 1\% a 2\% de diferença. Com o conjunto {\em Web} o resultado foi 1\% melhor no primeiro caso, mas de 1\% a 8\% pior para os seguintes, isso nos mostra que o LIBSVM tem um resultado mais consistente, enquanto a nossa implementação depende mais da escolha certa de parâmetros.
 
 Quanto ao tempo de execução é complicado comparar os tempos da nossa implementação com a do LIBSVM que usa um algoritmo muito mais sofisticado e complexo, logo, é compreensível que o tempo de execução de nosso programa tenha sido inferior.
-
-

@@ -27,7 +27,7 @@ Além dessas melhorias poderiam ser feitos mais experimentos. Analisando, por ex
 
 \subsection{Melhorias na MVS}
 
-Fazer a máquina de vetores suporte multi-classe é relativamente simples a partir de uma máquina de vetores suporte binária, como o Kernel-Adatron. Para isso é necessário quebrar a classificação em problema menores. Em vez de treinar apenas uma MVS se treina uma MVS para cada classe, que vai aprender se um exemplo é ou não dessa classe.
+Fazer a máquina de vetores suporte multi-classe é relativamente simples a partir de uma máquina de vetores suporte binária, como o Kernel-Adatron. Para isso é necessário quebrar a classificação em problema menores. Em vez de treinar apenas uma MVS se treina uma MVS para cada classe, que vai aprender se um exemplo é ou não dessa classe. Como no final são feitas várias classificações diferentes isso poderia ser feito externamente à paralelização.
 
 Além disso, é possível modificar o algoritmo Kernel-Adatron para fazer regressão ao invés de classificação. Este processo é fácil de se encontrar e está descrito em \cite{art:LIVRO_KAA}.
 
